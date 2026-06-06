@@ -4,6 +4,7 @@ import { Spinner } from './components/ui/States'
 import { Login } from './pages/Login'
 import { ProfileSetup } from './pages/ProfileSetup'
 import { AppLayout } from './components/layout/AppLayout'
+import { Welcome } from './pages/Welcome'
 import { BoardPage } from './pages/BoardPage'
 import { TodosPage } from './pages/TodosPage'
 import { MeetingsPage } from './pages/MeetingsPage'
@@ -42,7 +43,7 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
-        <Route index element={<Navigate to="/board" replace />} />
+        <Route index element={<Welcome />} />
         <Route
           path="/board"
           element={

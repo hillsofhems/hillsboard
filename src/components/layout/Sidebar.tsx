@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import {
+  Home,
   LayoutGrid,
   Briefcase,
   CheckSquare,
@@ -18,6 +19,7 @@ import { usePages } from '@/context/PagesContext'
 import { cn } from '@/lib/utils'
 
 const mainNav = [
+  { to: '/', label: 'Start', icon: Home, end: true },
   { to: '/board', label: 'Saisonplanung', icon: LayoutGrid },
   { to: '/daily', label: 'Daily Business', icon: Briefcase },
   { to: '/todos', label: 'To-dos', icon: CheckSquare },
@@ -76,7 +78,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <ul className="space-y-0.5">
             {mainNav.map((item) => (
               <li key={item.to}>
-                <NavItem to={item.to} icon={item.icon} label={item.label} onClick={onClose} />
+                <NavItem
+                  to={item.to}
+                  icon={item.icon}
+                  label={item.label}
+                  end={'end' in item ? item.end : false}
+                  onClick={onClose}
+                />
               </li>
             ))}
           </ul>
@@ -131,16 +139,19 @@ function NavItem({
   to,
   icon: Icon,
   label,
+  end,
   onClick,
 }: {
   to: string
   icon: React.ComponentType<{ className?: string }>
   label: string
+  end?: boolean
   onClick: () => void
 }) {
   return (
     <NavLink
       to={to}
+      end={end}
       onClick={onClick}
       className={({ isActive }) =>
         cn(
