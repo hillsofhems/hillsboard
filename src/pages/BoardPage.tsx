@@ -25,6 +25,7 @@ import { BoardGuide } from '@/components/board/BoardGuide'
 import { BoardCardItem } from '@/components/board/BoardCardItem'
 import { CardDetail } from '@/components/board/CardDetail'
 import { useToast } from '@/components/ui/Toast'
+import { cn, LABEL_COLORS, BOARD_LABELS } from '@/lib/utils'
 
 type Containers = Record<string, string[]> // columnId -> geordnete cardIds
 
@@ -331,6 +332,17 @@ export function BoardPage() {
           </>
         }
       />
+
+      {/* Label-Legende: Bedeutung der Farben, kurz oben */}
+      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-line bg-sand-50/60 px-3 py-2 text-xs">
+        <span className="font-medium text-ink-soft">Labels:</span>
+        {BOARD_LABELS.map((l) => (
+          <span key={l.key} className="inline-flex items-center gap-1.5 text-ink-muted">
+            <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', LABEL_COLORS[l.key].dot)} />
+            {l.name}
+          </span>
+        ))}
+      </div>
 
       {loading ? (
         <Spinner label="Board wird geladen …" />

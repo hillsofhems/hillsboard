@@ -41,6 +41,23 @@ export const LABEL_COLORS: Record<LabelColor, { dot: string; chip: string; name:
 
 export const LABEL_COLOR_KEYS = Object.keys(LABEL_COLORS) as LabelColor[]
 
+/**
+ * Feste, bedeutungstragende Karten-Labels fürs Board (Farbe -> Bedeutung).
+ * Reihenfolge = Reihenfolge in Auswahl & Legende.
+ */
+export const BOARD_LABELS: { key: LabelColor; name: string }[] = [
+  { key: 'sage', name: 'Neue Produkte' },
+  { key: 'terracotta', name: 'Vertriebsmöglichkeiten' },
+  { key: 'blue', name: 'Events' },
+  { key: 'sand', name: 'Weiteres' },
+]
+
+/** Name eines Labels anhand der Farbe (Fallback: generischer Farbname). */
+export function boardLabelName(key: LabelColor | null | undefined): string {
+  if (!key) return ''
+  return BOARD_LABELS.find((l) => l.key === key)?.name ?? LABEL_COLORS[key]?.name ?? ''
+}
+
 /** Datum hübsch (de-DE), z. B. "6. Juni 2026". */
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return ''

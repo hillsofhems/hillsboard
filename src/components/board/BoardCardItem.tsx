@@ -3,7 +3,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { CheckSquare } from 'lucide-react'
 import type { BoardCard } from '@/lib/types'
 import { Avatar } from '@/components/ui/Avatar'
-import { LABEL_COLORS, cn } from '@/lib/utils'
+import { LABEL_COLORS, boardLabelName, cn } from '@/lib/utils'
 
 interface Props {
   card: BoardCard
@@ -25,7 +25,7 @@ export function BoardCardItem({ card, assigneeName, todoCount, todoDone, onClick
     transition,
   }
 
-  const label = card.label_color ? LABEL_COLORS[card.label_color] : null
+  const labelColor = card.label_color
 
   return (
     <div
@@ -40,7 +40,16 @@ export function BoardCardItem({ card, assigneeName, todoCount, todoDone, onClick
         isDragging && 'opacity-50',
       )}
     >
-      {label && <span className={cn('mb-2 inline-block h-1.5 w-9 rounded-full', label.dot)} />}
+      {labelColor && (
+        <span
+          className={cn(
+            'mb-2 inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium',
+            LABEL_COLORS[labelColor].chip,
+          )}
+        >
+          {boardLabelName(labelColor)}
+        </span>
+      )}
 
       <p className="text-sm font-medium leading-snug text-ink">{card.title}</p>
 

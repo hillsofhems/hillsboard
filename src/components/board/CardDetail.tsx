@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea, Select } from '@/components/ui/Field'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { CardTodos } from '@/components/todos/CardTodos'
-import { LABEL_COLORS, LABEL_COLOR_KEYS, cn } from '@/lib/utils'
+import { LABEL_COLORS, BOARD_LABELS, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 
 /**
@@ -131,32 +131,34 @@ export function CardDetail({
           </Field>
 
           <Field label="Label">
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <div className="flex flex-wrap gap-1.5 pt-1">
               <button
                 type="button"
                 onClick={() => setLabel('')}
                 className={cn(
-                  'h-7 rounded-full border px-3 text-xs',
+                  'inline-flex items-center rounded-lg border px-2.5 py-1.5 text-sm transition-colors',
                   label === ''
                     ? 'border-ink-soft bg-sand-100 text-ink'
                     : 'border-line text-ink-muted hover:bg-sand-50',
                 )}
               >
-                Keins
+                Kein Label
               </button>
-              {LABEL_COLOR_KEYS.map((key) => (
+              {BOARD_LABELS.map(({ key, name }) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setLabel(key)}
-                  title={LABEL_COLORS[key].name}
-                  aria-label={LABEL_COLORS[key].name}
                   className={cn(
-                    'h-7 w-7 rounded-full ring-offset-2 ring-offset-surface transition-all',
-                    LABEL_COLORS[key].dot,
-                    label === key ? 'ring-2 ring-ink-soft' : 'hover:scale-105',
+                    'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm transition-colors',
+                    label === key
+                      ? 'border-sage-400 bg-sage-50 text-ink ring-1 ring-sage-300'
+                      : 'border-line text-ink-soft hover:bg-sand-50',
                   )}
-                />
+                >
+                  <span className={cn('h-3 w-3 shrink-0 rounded-full', LABEL_COLORS[key].dot)} />
+                  {name}
+                </button>
               ))}
             </div>
           </Field>
