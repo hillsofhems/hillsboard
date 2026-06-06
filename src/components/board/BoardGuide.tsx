@@ -1,25 +1,25 @@
-import { Columns3, Plus, Move, MousePointerClick, ChevronRight, X } from 'lucide-react'
+import { Plus, Save, MousePointerClick, CheckSquare, ChevronRight, X } from 'lucide-react'
 
 const STEPS = [
   {
-    icon: Columns3,
-    title: 'Spalte anlegen',
-    text: 'Oben rechts auf „Spalte" tippen und benennen.',
-  },
-  {
     icon: Plus,
     title: 'Karte erstellen',
-    text: 'Unten in einer Spalte auf „Karte hinzufügen".',
+    text: 'Unten in einer Spalte auf „Karte hinzufügen" tippen.',
   },
   {
-    icon: Move,
-    title: 'Verschieben',
-    text: 'Karte mit gedrückter Maus in eine andere Spalte ziehen.',
+    icon: Save,
+    title: 'Titel & speichern',
+    text: 'Titel eintragen und auf „Hinzufügen" / Speichern klicken.',
   },
   {
     icon: MousePointerClick,
-    title: 'Details öffnen',
-    text: 'Karte anklicken: Beschreibung, Verantwortliche & To-dos.',
+    title: 'Karte öffnen',
+    text: 'Karte erneut anklicken und weitere Infos eintragen.',
+  },
+  {
+    icon: CheckSquare,
+    title: 'To-dos eintragen',
+    text: 'To-dos in der Karte anlegen – sie erscheinen auch unter „To-dos".',
   },
 ]
 
