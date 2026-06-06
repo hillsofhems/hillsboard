@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, UserRound, ChevronDown } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { CardTodo, Profile } from '@/lib/types'
+import type { CardTodo, CardTodoAssignee, Profile } from '@/lib/types'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Field'
-import { Avatar } from '@/components/ui/Avatar'
+import { AssigneePicker } from './AssigneePicker'
 import { cn, isOverdue } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 
 /**
- * To-do-Liste einer Kanban-Karte: anlegen, abhaken, Verantwortlichen + Fällig-
- * keit setzen, löschen. Meldet Änderungen über onChange (für Fortschrittsanzeige).
+ * To-do-Liste einer Kanban-Karte: anlegen, abhaken, Fälligkeit setzen,
+ * mehreren Personen ODER dem Team zuweisen, löschen. Meldet Änderungen via onChange.
  */
 export function CardTodos({
   cardId,
@@ -23,22 +23,39 @@ export function CardTodos({
 }) {
   const { toast } = useToast()
   const [todos, setTodos] = useState<CardTodo[]>([])
+  // todoId -> Menge zugewiesener User-IDs
+  const [assignees, setAssignees] = useState<Record<string, Set<string>>>({})
   const [loading, setLoading] = useState(true)
   const [newText, setNewText] = useState('')
   const [adding, setAdding] = useState(false)
 
-  const load = () => {
-    supabase
+  const load = async () => {
+    const { data: todoData } = await supabase
       .from('card_todos')
       .select('*')
       .eq('card_id', cardId)
       .order('position')
-      .then(({ data }) => {
-        setTodos((data as CardTodo[]) ?? [])
-        setLoading(false)
+    const list = (todoData as CardTodo[]) ?? []
+    setTodos(list)
+
+    const ids = list.map((t) => t.id)
+    const amap: Record<string, Set<string>> = {}
+    if (ids.length) {
+      const { data: aData } = await supabase
+        .from('card_todo_assignees')
+        .select('*')
+        .in('todo_id', ids)
+      ;((aData as CardTodoAssignee[]) ?? []).forEach((a) => {
+        ;(amap[a.todo_id] ??= new Set()).add(a.user_id)
       })
+    }
+    setAssignees(amap)
+    setLoading(false)
   }
-  useEffect(load, [cardId])
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardId])
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,6 +91,28 @@ export function CardTodos({
     onChange?.()
   }
 
+  const toggleUser = async (todoId: string, userId: string) => {
+    const has = assignees[todoId]?.has(userId)
+    setAssignees((prev) => {
+      const next = { ...prev }
+      const s = new Set(next[todoId] ?? [])
+      if (has) s.delete(userId)
+      else s.add(userId)
+      next[todoId] = s
+      return next
+    })
+    if (has) {
+      await supabase.from('card_todo_assignees').delete().eq('todo_id', todoId).eq('user_id', userId)
+    } else {
+      const { error } = await supabase
+        .from('card_todo_assignees')
+        .insert({ todo_id: todoId, user_id: userId })
+      if (error) toast(error.message, 'error')
+    }
+  }
+
+  const toggleTeam = (todo: CardTodo) => patch(todo.id, { is_team: !todo.is_team })
+
   const done = todos.filter((t) => t.is_done).length
 
   return (
@@ -102,8 +141,8 @@ export function CardTodos({
       ) : (
         <ul className="space-y-1.5">
           {todos.map((t) => {
-            const assignee = profiles.find((p) => p.id === t.assignee_id)
             const overdue = t.due_date && isOverdue(t.due_date) && !t.is_done
+            const selected = assignees[t.id] ?? new Set<string>()
             return (
               <li key={t.id} className="group rounded-lg border border-line bg-surface p-2.5">
                 {/* Zeile 1: Haken + To-do-Text + Löschen */}
@@ -129,7 +168,6 @@ export function CardTodos({
                       t.is_done ? 'text-ink-faint line-through' : 'text-ink',
                     )}
                   />
-                  {/* auf Mobile immer sichtbar (kein Hover), am Desktop erst beim Hovern */}
                   <button
                     onClick={() => remove(t.id)}
                     className="shrink-0 cursor-pointer rounded p-1 text-ink-faint opacity-100 transition-opacity hover:text-terracotta-600 sm:opacity-0 sm:group-hover:opacity-100"
@@ -139,9 +177,8 @@ export function CardTodos({
                   </button>
                 </div>
 
-                {/* Zeile 2: direkt bedienbares Datum + Verantwortlich (touch-freundlich) */}
+                {/* Zeile 2: Fälligkeit */}
                 <div className="mt-2 flex flex-wrap items-center gap-2 pl-[26px]">
-                  {/* Fälligkeitsdatum – kompaktes natives Datumsfeld */}
                   <input
                     type="date"
                     value={t.due_date ?? ''}
@@ -154,35 +191,17 @@ export function CardTodos({
                       overdue ? 'border-terracotta-300 text-terracotta-600' : 'border-line',
                     )}
                   />
+                </div>
 
-                  {/* Verantwortlich – echtes Auswahlfeld mit Avatar/Icon */}
-                  <div className="relative inline-flex min-w-0 flex-1 items-center sm:flex-none">
-                    <span className="pointer-events-none absolute left-2 flex items-center">
-                      {assignee ? (
-                        <Avatar name={assignee.name} size="xs" className="h-5 w-5 text-[10px]" />
-                      ) : (
-                        <UserRound className="h-4 w-4 text-ink-faint" />
-                      )}
-                    </span>
-                    <select
-                      value={t.assignee_id ?? ''}
-                      onChange={(e) => patch(t.id, { assignee_id: e.target.value || null })}
-                      aria-label="Verantwortlich"
-                      className={cn(
-                        'h-9 w-full min-w-0 cursor-pointer appearance-none truncate rounded-md border border-line bg-surface pl-9 pr-7 text-sm text-ink-soft',
-                        'focus:border-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-200',
-                        'sm:h-7 sm:w-auto sm:text-xs',
-                      )}
-                    >
-                      <option value="">Verantwortlich …</option>
-                      {profiles.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-ink-faint" />
-                  </div>
+                {/* Zeile 3: Zuweisung (mehrere Personen oder Team) */}
+                <div className="mt-2 pl-[26px]">
+                  <AssigneePicker
+                    profiles={profiles}
+                    selected={selected}
+                    isTeam={t.is_team}
+                    onToggleUser={(uid) => toggleUser(t.id, uid)}
+                    onToggleTeam={() => toggleTeam(t)}
+                  />
                 </div>
               </li>
             )

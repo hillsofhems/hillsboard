@@ -50,11 +50,17 @@ export interface CardTodo {
   id: string
   card_id: string | null // NULL = "Daily Business" (kein Projekt verknüpft)
   text: string
-  assignee_id: string | null
+  assignee_id: string | null // Legacy (Einzel-Zuweisung); UI nutzt assignees + is_team
+  is_team: boolean // true = ganzes Team
   due_date: string | null
   is_done: boolean
   position: number
   created_at: string
+}
+
+export interface CardTodoAssignee {
+  todo_id: string
+  user_id: string
 }
 
 export interface Meeting {

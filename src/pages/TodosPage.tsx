@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckSquare, ExternalLink, Calendar, Plus, Briefcase } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { CardTodo } from '@/lib/types'
+import type { CardTodo, CardTodoAssignee } from '@/lib/types'
 import { useAuth } from '@/context/AuthContext'
 import { useProfiles } from '@/hooks/useProfiles'
 import { PageHeader } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Field'
 import { Avatar } from '@/components/ui/Avatar'
+import { AssigneePicker, AssigneeDisplay } from '@/components/todos/AssigneePicker'
 import { Spinner, EmptyState, ErrorState } from '@/components/ui/States'
 import { cn, formatShortDate, isOverdue } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
@@ -30,6 +31,8 @@ export function TodosPage() {
   const { profiles, nameOf } = useProfiles()
   const meId = profile?.id
   const [todos, setTodos] = useState<TodoWithCard[]>([])
+  // todoId -> Menge zugewiesener User-IDs
+  const [assignees, setAssignees] = useState<Record<string, Set<string>>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [person, setPerson] = useState<string>('') // '' = alle, 'none' = ohne
@@ -42,7 +45,8 @@ export function TodosPage() {
   const [composerOpen, setComposerOpen] = useState(false)
   const [newText, setNewText] = useState('')
   const [newCard, setNewCard] = useState('') // '' = Daily Business
-  const [newAssignee, setNewAssignee] = useState('')
+  const [newAssignees, setNewAssignees] = useState<Set<string>>(new Set())
+  const [newIsTeam, setNewIsTeam] = useState(false)
   const [newDue, setNewDue] = useState('')
   const [adding, setAdding] = useState(false)
 
@@ -56,14 +60,28 @@ export function TodosPage() {
         .order('is_done')
         .order('due_date', { nullsFirst: false }),
       supabase.from('board_cards').select('id, title').order('title'),
-    ]).then(([todoRes, cardRes]) => {
+      supabase.from('card_todo_assignees').select('*'),
+    ]).then(([todoRes, cardRes, aRes]) => {
       if (todoRes.error) setError(todoRes.error.message)
       setTodos((todoRes.data as TodoWithCard[]) ?? [])
       setCards((cardRes.data as ProjectCard[]) ?? [])
+      const amap: Record<string, Set<string>> = {}
+      ;((aRes.data as CardTodoAssignee[]) ?? []).forEach((a) => {
+        ;(amap[a.todo_id] ??= new Set()).add(a.user_id)
+      })
+      setAssignees(amap)
       setLoading(false)
     })
   }
   useEffect(load, [])
+
+  const toggleNewUser = (uid: string) =>
+    setNewAssignees((prev) => {
+      const s = new Set(prev)
+      if (s.has(uid)) s.delete(uid)
+      else s.add(uid)
+      return s
+    })
 
   // Neues To-do anlegen (optional mit Projekt; sonst Daily Business).
   const addTodo = async (e: React.FormEvent) => {
@@ -71,24 +89,37 @@ export function TodosPage() {
     const text = newText.trim()
     if (!text) return
     setAdding(true)
-    const { error } = await supabase.from('card_todos').insert({
-      text,
-      card_id: newCard || null, // null = Daily Business
-      assignee_id: newAssignee || null,
-      due_date: newDue || null,
-      position: 0,
-    })
+    const { data, error } = await supabase
+      .from('card_todos')
+      .insert({
+        text,
+        card_id: newCard || null, // null = Daily Business
+        is_team: newIsTeam,
+        due_date: newDue || null,
+        position: 0,
+      })
+      .select()
+      .single()
     if (error) {
       toast(error.message, 'error')
-    } else {
-      toast('To-do angelegt.')
-      setNewText('')
-      setNewCard('')
-      setNewAssignee('')
-      setNewDue('')
-      setComposerOpen(false)
-      load()
+      setAdding(false)
+      return
     }
+    const todoId = (data as CardTodo).id
+    if (newAssignees.size > 0) {
+      const { error: aErr } = await supabase
+        .from('card_todo_assignees')
+        .insert([...newAssignees].map((uid) => ({ todo_id: todoId, user_id: uid })))
+      if (aErr) toast(aErr.message, 'error')
+    }
+    toast('To-do angelegt.')
+    setNewText('')
+    setNewCard('')
+    setNewAssignees(new Set())
+    setNewIsTeam(false)
+    setNewDue('')
+    setComposerOpen(false)
+    load()
     setAdding(false)
   }
 
@@ -101,19 +132,26 @@ export function TodosPage() {
     if (error) toast(error.message, 'error')
   }
 
+  // Zuweisung eines To-dos auswerten
+  const assigneesOf = (id: string) => assignees[id] ?? new Set<string>()
+  const isMineRow = (t: TodoWithCard) =>
+    Boolean(meId) && (t.is_team || assigneesOf(t.id).has(meId as string))
+
   const filtered = useMemo(() => {
     return todos.filter((t) => {
       if (status === 'open' && t.is_done) return false
       if (status === 'done' && !t.is_done) return false
-      if (person === 'none' && t.assignee_id) return false
-      if (person && person !== 'none' && t.assignee_id !== person) return false
+      const set = assignees[t.id] ?? new Set<string>()
+      if (person === 'none' && (t.is_team || set.size > 0)) return false
+      if (person && person !== 'none' && !t.is_team && !set.has(person)) return false
       return true
     })
-  }, [todos, status, person])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todos, status, person, assignees])
 
   const openCount = todos.filter((t) => !t.is_done).length
   // Offene eigene To-dos (für den Zähler am Schnellfilter).
-  const myOpenCount = todos.filter((t) => t.assignee_id === meId && !t.is_done).length
+  const myOpenCount = todos.filter((t) => !t.is_done && isMineRow(t)).length
   const mineActive = Boolean(meId) && person === meId
 
   return (
@@ -138,7 +176,7 @@ export function TodosPage() {
             autoFocus
             aria-label="To-do-Text"
           />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Projekt">
               <Select value={newCard} onChange={(e) => setNewCard(e.target.value)}>
                 <option value="">Daily Business (kein Projekt)</option>
@@ -149,20 +187,19 @@ export function TodosPage() {
                 ))}
               </Select>
             </Field>
-            <Field label="Verantwortlich">
-              <Select value={newAssignee} onChange={(e) => setNewAssignee(e.target.value)}>
-                <option value="">Niemand</option>
-                {profiles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
             <Field label="Fällig am">
               <Input type="date" value={newDue} onChange={(e) => setNewDue(e.target.value)} />
             </Field>
           </div>
+          <Field label="Verantwortlich (mehrere oder Team)">
+            <AssigneePicker
+              profiles={profiles}
+              selected={newAssignees}
+              isTeam={newIsTeam}
+              onToggleUser={toggleNewUser}
+              onToggleTeam={() => setNewIsTeam((v) => !v)}
+            />
+          </Field>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setComposerOpen(false)}>
               Abbrechen
@@ -210,7 +247,7 @@ export function TodosPage() {
               {p.name}
             </option>
           ))}
-          <option value="none">Ohne Verantwortlichen</option>
+          <option value="none">Ohne Zuweisung</option>
         </Select>
         <Select
           value={status}
@@ -232,12 +269,13 @@ export function TodosPage() {
         <EmptyState
           icon={CheckSquare}
           title="Keine To-dos"
-          description="Lege To-dos direkt auf den Karten im Board an."
+          description="Lege ein neues To-do an oder erstelle welche direkt auf den Board-Karten."
         />
       ) : (
         <ul className="overflow-hidden rounded-xl border border-line bg-surface">
           {filtered.map((t) => {
-            const mine = Boolean(meId) && t.assignee_id === meId
+            const mine = isMineRow(t)
+            const names = [...assigneesOf(t.id)].map((id) => nameOf(id)).filter(Boolean)
             return (
               <li
                 key={t.id}
@@ -288,23 +326,8 @@ export function TodosPage() {
                   </span>
                 )}
 
-                {/* Verantwortlich: Avatar + Name (oder „Niemand") */}
-                {t.assignee_id ? (
-                  <span
-                    className={cn(
-                      'inline-flex shrink-0 items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2',
-                      mine ? 'bg-sage-100 text-sage-700' : 'text-ink-soft',
-                    )}
-                  >
-                    <Avatar name={nameOf(t.assignee_id)} size="xs" />
-                    <span className="text-xs font-medium">{nameOf(t.assignee_id)}</span>
-                    {mine && (
-                      <span className="text-2xs font-semibold uppercase text-sage-600">Du</span>
-                    )}
-                  </span>
-                ) : (
-                  <span className="shrink-0 text-xs italic text-ink-faint">Niemand</span>
-                )}
+                {/* Zuweisung: Team / mehrere Avatare+Namen / Niemand */}
+                <AssigneeDisplay isTeam={t.is_team} names={names} />
               </li>
             )
           })}
