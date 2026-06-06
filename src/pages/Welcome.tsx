@@ -6,19 +6,27 @@ import {
   Briefcase,
   PartyPopper,
   ListChecks,
+  CalendarDays,
+  ChevronRight,
   Heart,
   Pencil,
   Send,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { CardTodo, CardTodoAssignee, BoardKey, TeamMessage } from '@/lib/types'
+import type {
+  CardTodo,
+  CardTodoAssignee,
+  BoardKey,
+  TeamMessage,
+  Meeting,
+} from '@/lib/types'
 import { useAuth } from '@/context/AuthContext'
 import { useProfiles } from '@/hooks/useProfiles'
 import { AssigneeDisplay } from '@/components/todos/AssigneePicker'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Spinner, ErrorState } from '@/components/ui/States'
-import { cn, formatShortDate, timeAgo } from '@/lib/utils'
+import { cn, formatShortDate, formatDateTime, timeAgo } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 
 type TodoWithCard = CardTodo & {
@@ -45,12 +53,15 @@ export function Welcome() {
   const [assignees, setAssignees] = useState<Record<string, Set<string>>>({})
   const [colBoard, setColBoard] = useState<Record<string, BoardKey>>({})
   const [teamMsgs, setTeamMsgs] = useState<TeamMessage[]>([])
+  const [meetings, setMeetings] = useState<Meeting[]>([])
+  const [meetingParts, setMeetingParts] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const load = () => {
     setLoading(true)
     setError(null)
+    const nowIso = new Date().toISOString()
     Promise.all([
       supabase
         .from('card_todos')
@@ -60,7 +71,13 @@ export function Welcome() {
       supabase.from('card_todo_assignees').select('*'),
       supabase.from('board_columns').select('id, board'),
       supabase.from('team_messages').select('*').order('created_at', { ascending: false }),
-    ]).then(([tRes, aRes, cRes, mRes]) => {
+      supabase
+        .from('meetings')
+        .select('*')
+        .gte('meeting_date', nowIso)
+        .order('meeting_date', { ascending: true }),
+      supabase.from('meeting_participants').select('*'),
+    ]).then(([tRes, aRes, cRes, mRes, meRes, mpRes]) => {
       if (tRes.error) setError(tRes.error.message)
       setTodos((tRes.data as TodoWithCard[]) ?? [])
       const amap: Record<string, Set<string>> = {}
@@ -74,6 +91,12 @@ export function Welcome() {
       })
       setColBoard(cmap)
       setTeamMsgs((mRes.data as TeamMessage[]) ?? [])
+      setMeetings((meRes.data as Meeting[]) ?? [])
+      const pmap: Record<string, string[]> = {}
+      ;((mpRes.data as { meeting_id: string; user_id: string }[]) ?? []).forEach((p) => {
+        ;(pmap[p.meeting_id] ??= []).push(p.user_id)
+      })
+      setMeetingParts(pmap)
       setLoading(false)
     })
   }
@@ -228,6 +251,71 @@ export function Welcome() {
                 ) : (
                   <ul className="overflow-hidden rounded-xl border border-line bg-surface">
                     {others.map((t) => renderRow(t, false))}
+                  </ul>
+                )}
+              </section>
+
+              {/* Anstehende Meetings */}
+              <section>
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="h-5 w-5 text-ink-muted" />
+                    <h2 className="font-serif text-lg font-semibold text-ink">
+                      Anstehende Meetings
+                    </h2>
+                    <span className="rounded-full bg-sand-200 px-2 py-0.5 text-xs text-ink-muted">
+                      {meetings.length}
+                    </span>
+                  </div>
+                  <Link
+                    to="/meetings"
+                    className="inline-flex items-center gap-0.5 text-xs text-ink-muted hover:text-sage-600"
+                  >
+                    Alle <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </div>
+                {meetings.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-line-strong bg-sand-50/50 px-4 py-4 text-sm text-ink-muted">
+                    Keine anstehenden Meetings.
+                  </p>
+                ) : (
+                  <ul className="overflow-hidden rounded-xl border border-line bg-surface">
+                    {meetings.map((m) => {
+                      const parts = meetingParts[m.id] ?? []
+                      return (
+                        <li key={m.id}>
+                          <Link
+                            to="/meetings"
+                            className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-0 transition-colors hover:bg-sand-50/60"
+                          >
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sage-100 text-sage-700">
+                              <CalendarDays className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-medium text-ink">{m.title}</div>
+                              <div className="text-xs text-ink-muted">
+                                {formatDateTime(m.meeting_date)}
+                              </div>
+                            </div>
+                            <div className="hidden items-center -space-x-1.5 sm:flex">
+                              {parts.slice(0, 4).map((id) => (
+                                <Avatar
+                                  key={id}
+                                  name={nameOf(id)}
+                                  size="xs"
+                                  className="ring-2 ring-surface"
+                                />
+                              ))}
+                              {parts.length > 4 && (
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sand-200 text-2xs text-ink-muted ring-2 ring-surface">
+                                  +{parts.length - 4}
+                                </span>
+                              )}
+                            </div>
+                          </Link>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </section>
