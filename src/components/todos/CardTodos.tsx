@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Calendar } from 'lucide-react'
+import { Plus, Trash2, Calendar, UserRound } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { CardTodo, Profile } from '@/lib/types'
 import { Button } from '@/components/ui/Button'
-import { Input, Select } from '@/components/ui/Field'
+import { Input } from '@/components/ui/Field'
+import { Avatar } from '@/components/ui/Avatar'
 import { cn, formatShortDate, isOverdue } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 
@@ -100,78 +101,101 @@ export function CardTodos({
         <div className="py-3 text-sm text-ink-muted">Lädt …</div>
       ) : (
         <ul className="space-y-1.5">
-          {todos.map((t) => (
-            <li
-              key={t.id}
-              className="group flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-2"
-            >
-              <input
-                type="checkbox"
-                checked={t.is_done}
-                onChange={(e) => patch(t.id, { is_done: e.target.checked })}
-                className="h-4 w-4 shrink-0 cursor-pointer accent-sage-500"
-                aria-label="Erledigt"
-              />
-              <input
-                value={t.text}
-                onChange={(e) =>
-                  setTodos((prev) => prev.map((x) => (x.id === t.id ? { ...x, text: e.target.value } : x)))
-                }
-                onBlur={(e) => patch(t.id, { text: e.target.value.trim() || t.text })}
-                className={cn(
-                  'min-w-0 flex-1 bg-transparent text-sm focus:outline-none',
-                  t.is_done ? 'text-ink-faint line-through' : 'text-ink',
-                )}
-              />
-
-              {/* Fälligkeit */}
-              <label
-                className={cn(
-                  'flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-xs',
-                  t.due_date && isOverdue(t.due_date) && !t.is_done
-                    ? 'text-terracotta-600'
-                    : 'text-ink-muted hover:bg-sand-100',
-                )}
-                title="Fälligkeitsdatum"
+          {todos.map((t) => {
+            const assignee = profiles.find((p) => p.id === t.assignee_id)
+            const overdue = t.due_date && isOverdue(t.due_date) && !t.is_done
+            return (
+              <li
+                key={t.id}
+                className="group flex items-start gap-2.5 rounded-lg border border-line bg-surface px-2.5 py-2"
               >
-                <Calendar className="h-3.5 w-3.5" />
-                {t.due_date ? (
-                  <span>{formatShortDate(t.due_date)}</span>
-                ) : (
-                  <span className="hidden sm:inline">Datum</span>
-                )}
                 <input
-                  type="date"
-                  value={t.due_date ?? ''}
-                  onChange={(e) => patch(t.id, { due_date: e.target.value || null })}
-                  className="sr-only"
+                  type="checkbox"
+                  checked={t.is_done}
+                  onChange={(e) => patch(t.id, { is_done: e.target.checked })}
+                  className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-sage-500"
+                  aria-label="Erledigt"
                 />
-              </label>
 
-              {/* Verantwortlich */}
-              <Select
-                value={t.assignee_id ?? ''}
-                onChange={(e) => patch(t.id, { assignee_id: e.target.value || null })}
-                className="h-8 w-28 text-xs"
-                aria-label="Verantwortlich"
-              >
-                <option value="">—</option>
-                {profiles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
+                <div className="min-w-0 flex-1">
+                  {/* Primär: der To-do-Text */}
+                  <input
+                    value={t.text}
+                    onChange={(e) =>
+                      setTodos((prev) =>
+                        prev.map((x) => (x.id === t.id ? { ...x, text: e.target.value } : x)),
+                      )
+                    }
+                    onBlur={(e) => patch(t.id, { text: e.target.value.trim() || t.text })}
+                    placeholder="To-do …"
+                    className={cn(
+                      'w-full bg-transparent text-sm focus:outline-none',
+                      t.is_done ? 'text-ink-faint line-through' : 'text-ink',
+                    )}
+                  />
 
-              <button
-                onClick={() => remove(t.id)}
-                className="cursor-pointer rounded p-1 text-ink-faint opacity-0 transition-opacity hover:text-terracotta-600 group-hover:opacity-100"
-                aria-label="To-do löschen"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </li>
-          ))}
+                  {/* Sekundär: dezente Meta-Zeile (Fälligkeit + Verantwortlich) */}
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                    <label
+                      className={cn(
+                        'inline-flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-2xs transition-colors',
+                        overdue
+                          ? 'bg-terracotta-50 text-terracotta-600'
+                          : 'text-ink-faint hover:bg-sand-100 hover:text-ink-muted',
+                      )}
+                      title="Fälligkeitsdatum"
+                    >
+                      <Calendar className="h-3 w-3" />
+                      {t.due_date ? formatShortDate(t.due_date) : 'Datum'}
+                      <input
+                        type="date"
+                        value={t.due_date ?? ''}
+                        onChange={(e) => patch(t.id, { due_date: e.target.value || null })}
+                        className="sr-only"
+                      />
+                    </label>
+
+                    {/* Verantwortlich – kompakt: Avatar/Icon + minimaler Select */}
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded px-1 py-0.5 text-2xs',
+                        assignee ? 'text-ink-muted' : 'text-ink-faint',
+                        'hover:bg-sand-100',
+                      )}
+                      title="Verantwortlich"
+                    >
+                      {assignee ? (
+                        <Avatar name={assignee.name} size="xs" className="h-4 w-4 text-[9px]" />
+                      ) : (
+                        <UserRound className="h-3 w-3" />
+                      )}
+                      <select
+                        value={t.assignee_id ?? ''}
+                        onChange={(e) => patch(t.id, { assignee_id: e.target.value || null })}
+                        aria-label="Verantwortlich"
+                        className="cursor-pointer appearance-none bg-transparent text-2xs focus:outline-none"
+                      >
+                        <option value="">Wer?</option>
+                        {profiles.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => remove(t.id)}
+                  className="mt-0.5 cursor-pointer rounded p-1 text-ink-faint opacity-0 transition-opacity hover:text-terracotta-600 group-hover:opacity-100"
+                  aria-label="To-do löschen"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
 
