@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Calendar, UserRound, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, UserRound, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { CardTodo, Profile } from '@/lib/types'
 import { Button } from '@/components/ui/Button'
@@ -140,31 +140,23 @@ export function CardTodos({
                 </div>
 
                 {/* Zeile 2: direkt bedienbares Datum + Verantwortlich (touch-freundlich) */}
-                <div className="mt-2 flex flex-wrap gap-2 pl-[26px]">
-                  {/* Fälligkeitsdatum – echtes Datumsfeld */}
-                  <div className="relative inline-flex items-center">
-                    <Calendar
-                      className={cn(
-                        'pointer-events-none absolute left-2 h-4 w-4',
-                        overdue ? 'text-terracotta-500' : 'text-ink-faint',
-                      )}
-                    />
-                    <input
-                      type="date"
-                      value={t.due_date ?? ''}
-                      onChange={(e) => patch(t.id, { due_date: e.target.value || null })}
-                      aria-label="Fälligkeitsdatum"
-                      className={cn(
-                        'h-9 cursor-pointer rounded-md border bg-surface pl-8 pr-2 text-sm text-ink-soft',
-                        'focus:border-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-200',
-                        'sm:h-7 sm:text-xs',
-                        overdue ? 'border-terracotta-300 text-terracotta-600' : 'border-line',
-                      )}
-                    />
-                  </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 pl-[26px]">
+                  {/* Fälligkeitsdatum – kompaktes natives Datumsfeld */}
+                  <input
+                    type="date"
+                    value={t.due_date ?? ''}
+                    onChange={(e) => patch(t.id, { due_date: e.target.value || null })}
+                    aria-label="Fälligkeitsdatum"
+                    className={cn(
+                      'h-9 w-[9.5rem] max-w-full shrink cursor-pointer rounded-md border bg-surface px-2.5 text-sm text-ink-soft',
+                      'focus:border-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-200',
+                      'sm:h-7 sm:w-auto sm:text-xs',
+                      overdue ? 'border-terracotta-300 text-terracotta-600' : 'border-line',
+                    )}
+                  />
 
                   {/* Verantwortlich – echtes Auswahlfeld mit Avatar/Icon */}
-                  <div className="relative inline-flex items-center">
+                  <div className="relative inline-flex min-w-0 flex-1 items-center sm:flex-none">
                     <span className="pointer-events-none absolute left-2 flex items-center">
                       {assignee ? (
                         <Avatar name={assignee.name} size="xs" className="h-5 w-5 text-[10px]" />
@@ -177,9 +169,9 @@ export function CardTodos({
                       onChange={(e) => patch(t.id, { assignee_id: e.target.value || null })}
                       aria-label="Verantwortlich"
                       className={cn(
-                        'h-9 min-w-[140px] cursor-pointer appearance-none rounded-md border border-line bg-surface pl-9 pr-7 text-sm text-ink-soft',
+                        'h-9 w-full min-w-0 cursor-pointer appearance-none truncate rounded-md border border-line bg-surface pl-9 pr-7 text-sm text-ink-soft',
                         'focus:border-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-200',
-                        'sm:h-7 sm:min-w-0 sm:text-xs',
+                        'sm:h-7 sm:w-auto sm:text-xs',
                       )}
                     >
                       <option value="">Verantwortlich …</option>
