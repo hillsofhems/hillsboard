@@ -54,10 +54,10 @@ export const BOARD_LABELS_BY_BOARD: Record<BoardKey, { key: LabelColor; name: st
     { key: 'sand', name: 'Weitere Produkte' },
   ],
   daily: [
-    { key: 'sage', name: 'Neue Produkte' },
-    { key: 'terracotta', name: 'Vertriebsmöglichkeiten' },
-    { key: 'blue', name: 'Events' },
-    { key: 'sand', name: 'Weiteres' },
+    { key: 'terracotta', name: 'Critical' },
+    { key: 'amber', name: 'Medium' },
+    { key: 'sage', name: 'Light' },
+    { key: 'sand', name: 'Unwichtig' },
   ],
 }
 

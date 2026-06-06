@@ -24,9 +24,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
 
   // Rollen-Text: primäre Rolle + ggf. "+N" für weitere.
   const primary = myRoles[0]
-  const roleLabel = primary
-    ? `${primary.funktionsbereich} · ${primary.rolle}`
-    : 'Noch keine Rolle zugewiesen'
+  const roleLabel = primary ? `${primary.funktionsbereich} · ${primary.rolle}` : ''
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-paper/90 px-4 backdrop-blur-md sm:px-6">
@@ -43,8 +41,10 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         <span className="truncate font-serif text-base text-ink sm:text-lg">
           {profile?.name || 'Team-Mitglied'}
         </span>
-        <span className="hidden text-ink-faint sm:inline">·</span>
-        <span className="hidden truncate text-sm text-ink-muted sm:inline">{roleLabel}</span>
+        {primary && <span className="hidden text-ink-faint sm:inline">·</span>}
+        {primary && (
+          <span className="hidden truncate text-sm text-ink-muted sm:inline">{roleLabel}</span>
+        )}
         {myRoles.length > 1 && (
           <Badge tone="sage" className="hidden sm:inline-flex">
             +{myRoles.length - 1}
@@ -73,7 +73,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
               <div className="font-medium text-ink">{profile?.name || 'Team-Mitglied'}</div>
               <div className="truncate text-xs text-ink-muted">{profile?.email}</div>
               {/* Auf Mobile die Rolle hier zeigen */}
-              <div className="mt-1.5 text-xs text-ink-soft sm:hidden">{roleLabel}</div>
+              {primary && <div className="mt-1.5 text-xs text-ink-soft sm:hidden">{roleLabel}</div>}
             </div>
             {myRoles.length > 0 && (
               <div className="border-b border-line px-4 py-2.5">
