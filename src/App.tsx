@@ -10,6 +10,7 @@ import { MeetingsPage } from './pages/MeetingsPage'
 import { TeamPage } from './pages/TeamPage'
 import { CreativeArea } from './pages/CreativeArea'
 import { FilesPage } from './pages/FilesPage'
+import { FinancePage } from './pages/FinancePage'
 import { InfoPage } from './pages/InfoPage'
 import { NewPageRedirect } from './pages/NewPageRedirect'
 import { AdminPage } from './pages/AdminPage'
@@ -69,6 +70,7 @@ export default function App() {
         <Route path="/creative" element={<CreativeArea />} />
         <Route path="/team" element={<TeamPage />} />
         <Route path="/files" element={<FilesPage />} />
+        <Route path="/finance" element={<FinancePage />} />
         <Route path="/pages/new" element={<NewPageRedirect />} />
         <Route path="/pages/:id" element={<InfoPage />} />
         <Route

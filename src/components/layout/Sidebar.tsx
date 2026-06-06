@@ -7,6 +7,7 @@ import {
   Users,
   FolderOpen,
   FileText,
+  Wallet,
   Shield,
   Sparkles,
   X,
@@ -23,6 +24,7 @@ const mainNav = [
   { to: '/creative', label: 'Creative Area', icon: Sparkles },
   { to: '/meetings', label: 'Meetings', icon: CalendarDays },
   { to: '/team', label: 'Team & Rollen', icon: Users },
+  { to: '/finance', label: 'Finanzen', icon: Wallet },
   { to: '/files', label: 'Dateien', icon: FolderOpen },
 ]
 

@@ -112,6 +112,14 @@ export function isOverdue(iso: string | null | undefined): boolean {
   return d < today
 }
 
+/** Betrag als Euro formatieren (de-DE), z. B. "1.234,56 €". */
+export function formatEUR(n: number): string {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(Number.isFinite(n) ? n : 0)
+}
+
 /** Relative Zeitangabe auf Deutsch, z. B. „vor 3 Min." / „gestern". */
 export function timeAgo(iso: string | null | undefined): string {
   if (!iso) return ''

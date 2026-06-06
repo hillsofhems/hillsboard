@@ -122,6 +122,20 @@ export interface IdeaReaction {
 
 export type FileSource = 'manual' | 'gdrive'
 
+export type FinanceSection = 'income' | 'expense' | 'asset' | 'liability'
+
+export interface FinanceEntry {
+  id: string
+  year: number
+  entry_date: string | null
+  section: FinanceSection
+  category: string
+  description: string
+  amount: number
+  created_at: string
+  created_by: string | null
+}
+
 export interface FileLink {
   id: string
   name: string
