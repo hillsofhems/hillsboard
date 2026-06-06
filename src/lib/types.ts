@@ -120,6 +120,13 @@ export interface IdeaReaction {
   user_id: string
 }
 
+export interface TeamMessage {
+  id: string
+  content: string
+  author_id: string | null
+  created_at: string
+}
+
 export type FileSource = 'manual' | 'gdrive'
 
 export type FinanceSection = 'income' | 'expense' | 'asset' | 'liability'
