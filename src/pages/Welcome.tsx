@@ -283,27 +283,42 @@ function TeamMessages({
   const others = [...latest.values()].filter((m) => m.author_id !== meId)
 
   return (
-    <div className="space-y-4">
-      <h2 className="font-serif text-lg font-semibold text-ink">Nachrichten ans Team</h2>
+    <div>
+      <h2 className="mb-4 font-serif text-lg font-semibold text-ink">Nachrichten ans Team</h2>
 
-      {/* Eigene Blase (editierbar) */}
-      <OwnBubble message={myMsg} name={nameOf(meId)} onPost={onPost} />
+      {/* Locker überlappender Cluster: leicht schräg, eng gestapelt,
+          beim Hovern richtet sich die Blase auf & hebt sich nach vorne. */}
+      <div className="relative">
+        {/* Eigene Blase – oben, voll sichtbar */}
+        <div className="group relative z-30">
+          <OwnBubble message={myMsg} name={nameOf(meId)} onPost={onPost} />
+        </div>
 
-      {/* Blasen der anderen */}
-      {others.map((m) => (
-        <Bubble
-          key={m.id}
-          authorId={m.author_id ?? 'x'}
-          name={nameOf(m.author_id) || 'Team'}
-          content={m.content}
-          createdAt={m.created_at}
-        />
-      ))}
+        {/* Blasen der anderen – überlappend darunter gefächert */}
+        {others.map((m, i) => (
+          <div
+            key={m.id}
+            style={{ zIndex: 20 - i }}
+            className={cn(
+              'group relative -mt-3 transition-all duration-200',
+              'hover:z-40 hover:-translate-y-1 hover:rotate-0 hover:scale-[1.02]',
+              i % 2 === 0 ? 'rotate-2' : '-rotate-2',
+            )}
+          >
+            <Bubble
+              authorId={m.author_id ?? 'x'}
+              name={nameOf(m.author_id) || 'Team'}
+              content={m.content}
+              createdAt={m.created_at}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
-/** Gedankenblase-Hülle mit Blasen-Punkten. */
+/** Gedankenblase-Hülle (Schatten hebt sich beim Hovern der Gruppe). */
 function BubbleShell({
   colorClass,
   children,
@@ -312,12 +327,13 @@ function BubbleShell({
   children: React.ReactNode
 }) {
   return (
-    <div>
-      <div className={cn('rounded-2xl border p-4 shadow-card', colorClass)}>{children}</div>
-      <div className="ml-7 mt-1.5 flex items-center gap-1">
-        <span className="h-2.5 w-2.5 rounded-full border border-line bg-surface" />
-        <span className="h-1.5 w-1.5 rounded-full border border-line bg-surface" />
-      </div>
+    <div
+      className={cn(
+        'rounded-2xl border p-4 shadow-card transition-shadow group-hover:shadow-pop',
+        colorClass,
+      )}
+    >
+      {children}
     </div>
   )
 }
