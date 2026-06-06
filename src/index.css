@@ -76,6 +76,20 @@
   }
 }
 
+/*
+ * Mobile: verhindert den iOS-Safari-Auto-Zoom beim Fokussieren von Feldern.
+ * iOS zoomt automatisch, sobald ein fokussiertes Feld < 16px Schrift hat –
+ * deshalb auf kleinen Screens alle Eingaben auf 16px anheben. Pinch-Zoom
+ * bleibt erhalten (barrierefrei), nur das automatische Reinzoomen entfällt.
+ */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

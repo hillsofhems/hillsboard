@@ -162,8 +162,8 @@ function RolesAdmin() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-line bg-surface">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <table className="w-full min-w-[520px] text-sm">
           <thead>
             <tr className="border-b border-line bg-sand-50 text-left text-xs uppercase tracking-wide text-ink-muted">
               <th className="px-4 py-3 font-semibold">Funktionsbereich</th>
