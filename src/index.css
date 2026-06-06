@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  /* Überschriften nutzen die organische Serife (Lora) */
+  h1, h2, h3, h4 {
+    @apply font-serif text-ink;
+  }
+
+  /* Dezenter, warmer Fokus-Ring (Accessibility) */
+  :focus-visible {
+    outline: none;
+    @apply ring-2 ring-sage-400 ring-offset-2 ring-offset-paper rounded;
+  }
+
+  /* Warm getönte Scrollbars */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-sand-300 rounded-full border-2 border-solid border-transparent bg-clip-content;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-sand-400;
+  }
+}
+
+@layer components {
+  /* Wiederkehrende Bausteine als Utilities */
+  .card {
+    @apply bg-surface border border-line rounded-xl shadow-card;
+  }
+
+  /* Einfacher Rich-Text-Render (für Meeting-Notizen & Info-Seiten) */
+  .prose-hills {
+    @apply text-ink-soft leading-relaxed;
+  }
+  .prose-hills h1 {
+    @apply text-2xl font-serif font-semibold text-ink mt-6 mb-2;
+  }
+  .prose-hills h2 {
+    @apply text-xl font-serif font-semibold text-ink mt-5 mb-2;
+  }
+  .prose-hills h3 {
+    @apply text-base font-semibold text-ink mt-4 mb-1;
+  }
+  .prose-hills p {
+    @apply my-2;
+  }
+  .prose-hills ul {
+    @apply list-disc pl-6 my-2 space-y-1;
+  }
+  .prose-hills ol {
+    @apply list-decimal pl-6 my-2 space-y-1;
+  }
+  .prose-hills strong {
+    @apply font-semibold text-ink;
+  }
+  .prose-hills a {
+    @apply text-sage-600 underline underline-offset-2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

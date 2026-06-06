@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build
+dist
+dist-ssr
+*.local
+*.tsbuildinfo
+# Von "tsc -b" emittierte Artefakte der Node-Config
+vite.config.js
+vite.config.d.ts
+
+# Env – NIEMALS echte Keys committen (nur .env.example gehört ins Repo)
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Supabase lokale Artefakte
+supabase/.branches
+supabase/.temp
+
+# Claude Code Tooling (nicht Teil des Projekts)
+.claude/
