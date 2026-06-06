@@ -61,7 +61,8 @@ export interface Meeting {
   id: string
   title: string
   meeting_date: string
-  notes: string
+  agenda: string // Tagesordnung (vorab)
+  notes: string // Protokoll / Minutes (im Nachhinein)
   created_at: string
 }
 
