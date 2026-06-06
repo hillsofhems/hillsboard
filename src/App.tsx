@@ -33,8 +33,9 @@ export default function App() {
 
   if (!session) return <Login />
 
-  // Profil noch nicht eingerichtet (Name leer) -> Setup erzwingen.
-  if (profile && !profile.name?.trim()) return <ProfileSetup />
+  // Profil fehlt komplett oder Name leer -> Setup erzwingen.
+  // (Fängt auch den Fall ab, dass der Auth-Trigger die Zeile nicht angelegt hat.)
+  if (!profile || !profile.name?.trim()) return <ProfileSetup />
 
   return (
     <Routes>
