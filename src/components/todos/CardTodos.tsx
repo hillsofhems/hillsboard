@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Calendar, UserRound } from 'lucide-react'
+import { Plus, Trash2, Calendar, UserRound, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { CardTodo, Profile } from '@/lib/types'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Field'
 import { Avatar } from '@/components/ui/Avatar'
-import { cn, formatShortDate, isOverdue } from '@/lib/utils'
+import { cn, isOverdue } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 
 /**
@@ -105,20 +105,16 @@ export function CardTodos({
             const assignee = profiles.find((p) => p.id === t.assignee_id)
             const overdue = t.due_date && isOverdue(t.due_date) && !t.is_done
             return (
-              <li
-                key={t.id}
-                className="group flex items-start gap-2.5 rounded-lg border border-line bg-surface px-2.5 py-2"
-              >
-                <input
-                  type="checkbox"
-                  checked={t.is_done}
-                  onChange={(e) => patch(t.id, { is_done: e.target.checked })}
-                  className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-sage-500"
-                  aria-label="Erledigt"
-                />
-
-                <div className="min-w-0 flex-1">
-                  {/* Primär: der To-do-Text */}
+              <li key={t.id} className="group rounded-lg border border-line bg-surface p-2.5">
+                {/* Zeile 1: Haken + To-do-Text + Löschen */}
+                <div className="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={t.is_done}
+                    onChange={(e) => patch(t.id, { is_done: e.target.checked })}
+                    className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-sage-500"
+                    aria-label="Erledigt"
+                  />
                   <input
                     value={t.text}
                     onChange={(e) =>
@@ -129,70 +125,73 @@ export function CardTodos({
                     onBlur={(e) => patch(t.id, { text: e.target.value.trim() || t.text })}
                     placeholder="To-do …"
                     className={cn(
-                      'w-full bg-transparent text-sm focus:outline-none',
+                      'min-w-0 flex-1 bg-transparent text-sm focus:outline-none',
                       t.is_done ? 'text-ink-faint line-through' : 'text-ink',
                     )}
                   />
-
-                  {/* Sekundär: dezente Meta-Zeile (Fälligkeit + Verantwortlich) */}
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                    <label
-                      className={cn(
-                        'inline-flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-2xs transition-colors',
-                        overdue
-                          ? 'bg-terracotta-50 text-terracotta-600'
-                          : 'text-ink-faint hover:bg-sand-100 hover:text-ink-muted',
-                      )}
-                      title="Fälligkeitsdatum"
-                    >
-                      <Calendar className="h-3 w-3" />
-                      {t.due_date ? formatShortDate(t.due_date) : 'Datum'}
-                      <input
-                        type="date"
-                        value={t.due_date ?? ''}
-                        onChange={(e) => patch(t.id, { due_date: e.target.value || null })}
-                        className="sr-only"
-                      />
-                    </label>
-
-                    {/* Verantwortlich – kompakt: Avatar/Icon + minimaler Select */}
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1 rounded px-1 py-0.5 text-2xs',
-                        assignee ? 'text-ink-muted' : 'text-ink-faint',
-                        'hover:bg-sand-100',
-                      )}
-                      title="Verantwortlich"
-                    >
-                      {assignee ? (
-                        <Avatar name={assignee.name} size="xs" className="h-4 w-4 text-[9px]" />
-                      ) : (
-                        <UserRound className="h-3 w-3" />
-                      )}
-                      <select
-                        value={t.assignee_id ?? ''}
-                        onChange={(e) => patch(t.id, { assignee_id: e.target.value || null })}
-                        aria-label="Verantwortlich"
-                        className="cursor-pointer appearance-none bg-transparent text-2xs focus:outline-none"
-                      >
-                        <option value="">Wer?</option>
-                        {profiles.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
-                    </span>
-                  </div>
+                  {/* auf Mobile immer sichtbar (kein Hover), am Desktop erst beim Hovern */}
+                  <button
+                    onClick={() => remove(t.id)}
+                    className="shrink-0 cursor-pointer rounded p-1 text-ink-faint opacity-100 transition-opacity hover:text-terracotta-600 sm:opacity-0 sm:group-hover:opacity-100"
+                    aria-label="To-do löschen"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
 
-                <button
-                  onClick={() => remove(t.id)}
-                  className="mt-0.5 cursor-pointer rounded p-1 text-ink-faint opacity-0 transition-opacity hover:text-terracotta-600 group-hover:opacity-100"
-                  aria-label="To-do löschen"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                {/* Zeile 2: direkt bedienbares Datum + Verantwortlich (touch-freundlich) */}
+                <div className="mt-2 flex flex-wrap gap-2 pl-[26px]">
+                  {/* Fälligkeitsdatum – echtes Datumsfeld */}
+                  <div className="relative inline-flex items-center">
+                    <Calendar
+                      className={cn(
+                        'pointer-events-none absolute left-2 h-4 w-4',
+                        overdue ? 'text-terracotta-500' : 'text-ink-faint',
+                      )}
+                    />
+                    <input
+                      type="date"
+                      value={t.due_date ?? ''}
+                      onChange={(e) => patch(t.id, { due_date: e.target.value || null })}
+                      aria-label="Fälligkeitsdatum"
+                      className={cn(
+                        'h-9 cursor-pointer rounded-md border bg-surface pl-8 pr-2 text-sm text-ink-soft',
+                        'focus:border-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-200',
+                        'sm:h-7 sm:text-xs',
+                        overdue ? 'border-terracotta-300 text-terracotta-600' : 'border-line',
+                      )}
+                    />
+                  </div>
+
+                  {/* Verantwortlich – echtes Auswahlfeld mit Avatar/Icon */}
+                  <div className="relative inline-flex items-center">
+                    <span className="pointer-events-none absolute left-2 flex items-center">
+                      {assignee ? (
+                        <Avatar name={assignee.name} size="xs" className="h-5 w-5 text-[10px]" />
+                      ) : (
+                        <UserRound className="h-4 w-4 text-ink-faint" />
+                      )}
+                    </span>
+                    <select
+                      value={t.assignee_id ?? ''}
+                      onChange={(e) => patch(t.id, { assignee_id: e.target.value || null })}
+                      aria-label="Verantwortlich"
+                      className={cn(
+                        'h-9 min-w-[140px] cursor-pointer appearance-none rounded-md border border-line bg-surface pl-9 pr-7 text-sm text-ink-soft',
+                        'focus:border-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-200',
+                        'sm:h-7 sm:min-w-0 sm:text-xs',
+                      )}
+                    >
+                      <option value="">Verantwortlich …</option>
+                      {profiles.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-ink-faint" />
+                  </div>
+                </div>
               </li>
             )
           })}
