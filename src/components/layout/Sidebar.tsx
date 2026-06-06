@@ -47,11 +47,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         {/* Marken-Kopf */}
         <div className="flex h-16 items-center justify-between gap-2 px-5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sage-500 text-white">
-              <svg viewBox="0 0 32 32" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                <path d="M10 8v16M22 8v16M10 16h12" strokeLinecap="round" />
-              </svg>
-            </div>
+            <img
+              src="/favicon.svg"
+              alt=""
+              className="h-9 w-9 rounded-lg border border-line"
+            />
             <div className="leading-tight">
               <div className="font-serif text-sm font-semibold text-ink">Hills of Hems</div>
               <div className="text-2xs uppercase tracking-wide text-ink-faint">Team Hub</div>

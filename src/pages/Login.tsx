@@ -48,11 +48,12 @@ export function Login() {
 
       <div className="relative w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-sage-500 text-white shadow-card">
-            <Logo />
-          </div>
-          <h1 className="font-serif text-2xl font-semibold text-ink">Hills of Hems</h1>
-          <p className="mt-1 text-sm text-ink-muted">Interne Team-Zentrale</p>
+          <img
+            src="/hillslogo.svg"
+            alt="Hills of Hems"
+            className="mx-auto mb-3 h-16 w-auto"
+          />
+          <p className="text-sm text-ink-muted">Interne Team-Zentrale</p>
         </div>
 
         <div className="card p-6">
@@ -137,14 +138,6 @@ export function Login() {
         </div>
       </div>
     </div>
-  )
-}
-
-function Logo() {
-  return (
-    <svg viewBox="0 0 32 32" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2.5}>
-      <path d="M10 8v16M22 8v16M10 16h12" strokeLinecap="round" />
-    </svg>
   )
 }
 
