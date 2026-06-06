@@ -8,6 +8,7 @@ import { BoardPage } from './pages/BoardPage'
 import { TodosPage } from './pages/TodosPage'
 import { MeetingsPage } from './pages/MeetingsPage'
 import { TeamPage } from './pages/TeamPage'
+import { CreativeArea } from './pages/CreativeArea'
 import { FilesPage } from './pages/FilesPage'
 import { InfoPage } from './pages/InfoPage'
 import { NewPageRedirect } from './pages/NewPageRedirect'
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/board" element={<BoardPage />} />
         <Route path="/todos" element={<TodosPage />} />
         <Route path="/meetings" element={<MeetingsPage />} />
+        <Route path="/creative" element={<CreativeArea />} />
         <Route path="/team" element={<TeamPage />} />
         <Route path="/files" element={<FilesPage />} />
         <Route path="/pages/new" element={<NewPageRedirect />} />

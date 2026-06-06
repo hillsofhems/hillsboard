@@ -98,6 +98,22 @@ export function isOverdue(iso: string | null | undefined): boolean {
   return d < today
 }
 
+/** Relative Zeitangabe auf Deutsch, z. B. „vor 3 Min." / „gestern". */
+export function timeAgo(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return ''
+  const diffMin = Math.floor((Date.now() - t) / 60000)
+  if (diffMin < 1) return 'gerade eben'
+  if (diffMin < 60) return `vor ${diffMin} Min.`
+  const h = Math.floor(diffMin / 60)
+  if (h < 24) return `vor ${h} Std.`
+  const days = Math.floor(h / 24)
+  if (days === 1) return 'gestern'
+  if (days < 7) return `vor ${days} Tagen`
+  return new Date(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+}
+
 /** Wandelt ein Datetime-ISO in den Wert für <input type="datetime-local">. */
 export function toDateTimeLocal(iso: string | null | undefined): string {
   if (!iso) return ''

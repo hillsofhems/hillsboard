@@ -7,6 +7,7 @@ import {
   FolderOpen,
   FileText,
   Shield,
+  Sparkles,
   X,
   Plus,
 } from 'lucide-react'
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils'
 const mainNav = [
   { to: '/board', label: 'Board', icon: LayoutGrid },
   { to: '/todos', label: 'To-dos', icon: CheckSquare },
+  { to: '/creative', label: 'Creative Area', icon: Sparkles },
   { to: '/meetings', label: 'Meetings', icon: CalendarDays },
   { to: '/team', label: 'Team & Rollen', icon: Users },
   { to: '/files', label: 'Dateien', icon: FolderOpen },

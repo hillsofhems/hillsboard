@@ -98,6 +98,19 @@ export interface PageBlock {
   created_at: string
 }
 
+export interface Idea {
+  id: string
+  parent_id: string | null // NULL = Bubble (Top-Level), sonst Idee zur Bubble
+  content: string
+  author_id: string | null
+  created_at: string
+}
+
+export interface IdeaReaction {
+  idea_id: string
+  user_id: string
+}
+
 export type FileSource = 'manual' | 'gdrive'
 
 export interface FileLink {
