@@ -115,8 +115,8 @@ export function CardDetail({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Worum geht es bei dieser Karte?"
-            rows={6}
-            className="min-h-[160px]"
+            rows={9}
+            className="min-h-[220px]"
           />
         </Field>
 
