@@ -12,7 +12,7 @@ import {
 import type { DragStartEvent, DragOverEvent, DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { Plus } from 'lucide-react'
+import { Plus, HelpCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { BoardCard, BoardColumn } from '@/lib/types'
 import { useProfiles } from '@/hooks/useProfiles'
@@ -21,11 +21,15 @@ import { Button } from '@/components/ui/Button'
 import { Spinner, ErrorState } from '@/components/ui/States'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { BoardColumnView } from '@/components/board/BoardColumnView'
+import { BoardGuide } from '@/components/board/BoardGuide'
 import { BoardCardItem } from '@/components/board/BoardCardItem'
 import { CardDetail } from '@/components/board/CardDetail'
 import { useToast } from '@/components/ui/Toast'
 
 type Containers = Record<string, string[]> // columnId -> geordnete cardIds
+
+// LocalStorage-Key, um die Kurzanleitung dauerhaft auszublenden.
+const GUIDE_KEY = 'hills_board_guide_hidden'
 
 /** Kanban-Board: Spalten + Karten mit Drag & Drop (dnd-kit) und Detail-Panel. */
 export function BoardPage() {
@@ -45,6 +49,30 @@ export function BoardPage() {
   const [deletingColumn, setDeletingColumn] = useState<BoardColumn | null>(null)
   const [addingColumn, setAddingColumn] = useState(false)
   const [newColLabel, setNewColLabel] = useState('')
+  // Kurzanleitung (unter dem Board), Zustand wird in localStorage gemerkt.
+  const [showGuide, setShowGuide] = useState(() => {
+    try {
+      return localStorage.getItem(GUIDE_KEY) !== '1'
+    } catch {
+      return true
+    }
+  })
+  const hideGuide = () => {
+    setShowGuide(false)
+    try {
+      localStorage.setItem(GUIDE_KEY, '1')
+    } catch {
+      /* ignore */
+    }
+  }
+  const openGuide = () => {
+    setShowGuide(true)
+    try {
+      localStorage.removeItem(GUIDE_KEY)
+    } catch {
+      /* ignore */
+    }
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -291,11 +319,16 @@ export function BoardPage() {
         title="Board"
         description="Saison- und Projektplanung. Karten per Drag & Drop verschieben."
         actions={
-          !addingColumn && (
-            <Button variant="secondary" onClick={() => setAddingColumn(true)}>
-              <Plus className="h-4 w-4" /> Spalte
+          <>
+            <Button variant="ghost" onClick={() => (showGuide ? hideGuide() : openGuide())}>
+              <HelpCircle className="h-4 w-4" /> Anleitung
             </Button>
-          )
+            {!addingColumn && (
+              <Button variant="secondary" onClick={() => setAddingColumn(true)}>
+                <Plus className="h-4 w-4" /> Spalte
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -373,6 +406,20 @@ export function BoardPage() {
             ) : null}
           </DragOverlay>
         </DndContext>
+      )}
+
+      {/* Kurzanleitung – unter dem Board */}
+      {showGuide ? (
+        <div className="mt-6">
+          <BoardGuide onClose={hideGuide} />
+        </div>
+      ) : (
+        <button
+          onClick={openGuide}
+          className="mt-6 inline-flex cursor-pointer items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-sage-600"
+        >
+          <HelpCircle className="h-4 w-4" /> Kurzanleitung einblenden
+        </button>
       )}
 
       {openCard && (
