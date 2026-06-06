@@ -4,9 +4,14 @@ Interne Team-Zentrale für **Hills of Hems** (Küchentextilien, DACH, 4-Personen
 Eine schlanke, hochwertig gestaltete Mischung aus Notion (Klarheit, Whitespace)
 und monday.com (farbige Status, klare Boards) – mit genau unseren Funktionen.
 
-**Funktionen:** Auth & Profile · Team & Rollen · Admin-Bereich · Kanban-Board ·
-verknüpfte To-dos · Meetings mit Protokoll · Info-Seiten (Text + Tabellen) ·
-Datei-Links.
+**Funktionen:** Startseite (persönliche Begrüßung, eigene überfällige & weitere
+To-dos, anstehende Meetings, Team-Nachrichten als Gedankenblasen) · Auth &
+Profile · Team & Rollen (mit Account-Verknüpfung & Hervorhebung eigener Rollen) ·
+Admin-Bereich · **zwei Kanban-Boards** (Saisonplanung & Daily Business, je eigene
+farbige Labels) · To-dos (mehrere Personen/Team, projekt- oder „Daily-Business"-
+gebunden, eigene To-do-Seite gruppiert nach Board) · Meetings (Agenda vorab +
+Protokoll, Anstehend/Vergangen) · **Creative Area** (Brainstorming-Bubbles) ·
+**Finanzen** (GuV + Bilanz pro Jahr) · Info-Seiten (Text + Tabellen) · Datei-Links.
 
 ---
 
@@ -34,9 +39,21 @@ Die SQL-Dateien liegen in [`supabase/migrations`](supabase/migrations) und müss
 
 | Datei | Inhalt |
 |-------|--------|
-| `0001_init_schema.sql` | Alle Tabellen |
-| `0002_rls_policies.sql` | RLS, Helper-Funktionen, Trigger |
-| `0003_seed.sql` | Rollen, Spalten, Beispiel-Seite, Beispiel-Links |
+| `0001_init_schema.sql` | Basis-Tabellen |
+| `0002_rls_policies.sql` | RLS, Helper-Funktionen (`is_admin`), Trigger |
+| `0003_seed.sql` | Rollen, Kanban-Spalten, Beispiel-Seite, Beispiel-Links |
+| `0004_seed_supply_chain_pages.sql` | Info-Seiten „Supply Chain Textil/Keramik" |
+| `0005_meetings_agenda.sql` | Meetings: Feld `agenda` (Agenda vorab) |
+| `0006_todos_optional_card.sql` | To-dos auch ohne Karte (Daily Business) |
+| `0007_creative_area.sql` | Creative Area: `ideas` + `idea_reactions` |
+| `0008_todo_multi_assignees.sql` | To-dos: mehrere Personen / Team |
+| `0009_second_board.sql` | Zweites Board „Daily Business" (`board`-Schlüssel) |
+| `0010_finance.sql` | Finanzen (`finance_entries`) + 2025-Seed |
+| `0011_team_message.sql` | Nachricht ans Team (`team_messages`) |
+
+> Tipp: Alle Dateien einfach **in numerischer Reihenfolge** (0001 → 0011)
+> nacheinander im SQL Editor ausführen. Jede ist idempotent bzw. nutzt
+> `if not exists`, ein erneutes Ausführen schadet also nicht.
 
 **Variante A – Dashboard (am einfachsten):**
 Supabase-Dashboard → **SQL Editor** → Inhalt jeder Datei nacheinander einfügen
@@ -92,13 +109,22 @@ App läuft auf <http://localhost:5173>.
 
 ## Datenmodell (Überblick)
 
-`profiles` · `roles` · `user_roles` · `board_columns` · `board_cards` ·
+**Basis:** `profiles` · `roles` · `user_roles` · `board_columns` · `board_cards` ·
 `card_todos` · `meetings` · `meeting_participants` · `pages` · `page_blocks` ·
 `file_links`
 
-`file_links.source` ist bereits als `'manual' | 'gdrive'` angelegt, damit später
-eine **echte Google-Drive-Integration** ergänzt werden kann. Aktuell wird nur die
-manuelle Variante genutzt (keine Google-OAuth-Integration).
+**Erweiterungen:** `card_todo_assignees` (Mehrfach-Zuweisung) · `ideas` +
+`idea_reactions` (Creative Area) · `finance_entries` (Finanzen) · `team_messages`
+(Team-Nachrichten)
+
+**Wichtige Felder:**
+- `board_columns.board` – `'season'` (Saisonplanung) | `'daily'` (Daily Business)
+- `card_todos.card_id` – optional (NULL = „Daily Business" / ohne Projekt)
+- `card_todos.is_team` – `true` = dem ganzen Team zugewiesen
+- `meetings.agenda` – Tagesordnung vorab; `meetings.notes` – Protokoll
+- `finance_entries.section` – `income | expense` (GuV) bzw. `asset | liability` (Bilanz)
+- `file_links.source` – `'manual' | 'gdrive'`: vorbereitet für eine spätere
+  **echte Google-Drive-Integration**; aktuell nur manuell (keine Google-OAuth).
 
 ---
 
@@ -117,6 +143,10 @@ an Row Level Security**. Umgesetzte Regeln:
 - **roles / user_roles:** lesen für eingeloggte User; **schreiben nur für Admins**
   (`is_admin(auth.uid())`, `SECURITY DEFINER`-Funktion, liest `profiles.is_admin`).
 - **Übrige Tabellen:** lesen + schreiben für eingeloggte Team-Mitglieder.
+- **Creative Area / Team-Nachrichten:** schreiben nur als man selbst
+  (`author_id = auth.uid()`); löschen eigene Beiträge oder als Admin.
+- **Finanzen:** lesen + schreiben für eingeloggte Team-Mitglieder (bei Bedarf
+  leicht auf Admins einschränkbar).
 - **`service_role`-Key** wird nirgends im Frontend / in der Client-ENV verwendet.
 
 ### RLS testen
