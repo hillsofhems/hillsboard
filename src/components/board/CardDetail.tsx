@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { BoardCard, LabelColor, Profile } from '@/lib/types'
+import type { BoardCard, BoardKey, LabelColor, Profile } from '@/lib/types'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea, Select } from '@/components/ui/Field'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { CardTodos } from '@/components/todos/CardTodos'
-import { LABEL_COLORS, BOARD_LABELS, cn } from '@/lib/utils'
+import { LABEL_COLORS, boardLabels, cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 
 /**
@@ -16,6 +16,7 @@ import { useToast } from '@/components/ui/Toast'
  */
 export function CardDetail({
   card,
+  board,
   columnLabel,
   profiles,
   onClose,
@@ -24,6 +25,7 @@ export function CardDetail({
   onTodosChanged,
 }: {
   card: BoardCard
+  board: BoardKey
   columnLabel: string
   profiles: Profile[]
   onClose: () => void
@@ -144,7 +146,7 @@ export function CardDetail({
               >
                 Kein Label
               </button>
-              {BOARD_LABELS.map(({ key, name }) => (
+              {boardLabels(board).map(({ key, name }) => (
                 <button
                   key={key}
                   type="button"

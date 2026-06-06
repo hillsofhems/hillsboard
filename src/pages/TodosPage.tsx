@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckSquare, ExternalLink, Calendar, Plus, Briefcase } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { CardTodo, CardTodoAssignee } from '@/lib/types'
+import type { CardTodo, CardTodoAssignee, BoardKey } from '@/lib/types'
 import { useAuth } from '@/context/AuthContext'
 import { useProfiles } from '@/hooks/useProfiles'
 import { PageHeader } from '@/components/layout/AppLayout'
@@ -20,9 +20,17 @@ type TodoWithCard = CardTodo & {
 }
 
 // Karte (Projekt) für die Projekt-Auswahl im Composer.
-type ProjectCard = { id: string; title: string }
+type ProjectCard = { id: string; title: string; column_id: string }
 
 type StatusFilter = 'open' | 'done' | 'all'
+
+// Gruppen auf der To-do-Seite (Reihenfolge = Anzeige-Reihenfolge).
+type GroupKey = BoardKey | 'none'
+const GROUPS: { key: GroupKey; label: string }[] = [
+  { key: 'season', label: 'Saisonplanung' },
+  { key: 'daily', label: 'Daily Business' },
+  { key: 'none', label: 'Ohne Projekt' },
+]
 
 /** „Alle To-dos“: filterbar nach Person & Status, mit Rücklink zur Karte. */
 export function TodosPage() {
@@ -40,6 +48,8 @@ export function TodosPage() {
 
   // Karten (Projekte) für die Projekt-Auswahl beim Anlegen.
   const [cards, setCards] = useState<ProjectCard[]>([])
+  // Spalten-ID -> Board (zum Gruppieren der To-dos nach Board).
+  const [colBoard, setColBoard] = useState<Record<string, BoardKey>>({})
 
   // Composer-Zustand (neues To-do anlegen).
   const [composerOpen, setComposerOpen] = useState(false)
@@ -59,9 +69,10 @@ export function TodosPage() {
         .select('*, board_cards(title, column_id)')
         .order('is_done')
         .order('due_date', { nullsFirst: false }),
-      supabase.from('board_cards').select('id, title').order('title'),
+      supabase.from('board_cards').select('id, title, column_id').order('title'),
       supabase.from('card_todo_assignees').select('*'),
-    ]).then(([todoRes, cardRes, aRes]) => {
+      supabase.from('board_columns').select('id, board'),
+    ]).then(([todoRes, cardRes, aRes, colRes]) => {
       if (todoRes.error) setError(todoRes.error.message)
       setTodos((todoRes.data as TodoWithCard[]) ?? [])
       setCards((cardRes.data as ProjectCard[]) ?? [])
@@ -70,6 +81,11 @@ export function TodosPage() {
         ;(amap[a.todo_id] ??= new Set()).add(a.user_id)
       })
       setAssignees(amap)
+      const cmap: Record<string, BoardKey> = {}
+      ;((colRes.data as { id: string; board: BoardKey }[]) ?? []).forEach((c) => {
+        cmap[c.id] = c.board
+      })
+      setColBoard(cmap)
       setLoading(false)
     })
   }
@@ -154,6 +170,79 @@ export function TodosPage() {
   const myOpenCount = todos.filter((t) => !t.is_done && isMineRow(t)).length
   const mineActive = Boolean(meId) && person === meId
 
+  // Karten-Lookup + Gruppe (Board) je To-do.
+  const cardById = useMemo(() => {
+    const m: Record<string, ProjectCard> = {}
+    cards.forEach((c) => (m[c.id] = c))
+    return m
+  }, [cards])
+  const boardOfTodo = (t: TodoWithCard): BoardKey | null => {
+    if (!t.card_id) return null
+    const c = cardById[t.card_id]
+    return (c && colBoard[c.column_id]) || null
+  }
+  const groupOf = (t: TodoWithCard): GroupKey => boardOfTodo(t) ?? 'none'
+
+  // Eine To-do-Zeile rendern (in den Gruppen wiederverwendet).
+  const renderTodo = (t: TodoWithCard) => {
+    const mine = isMineRow(t)
+    const names = [...assigneesOf(t.id)].map((id) => nameOf(id)).filter(Boolean)
+    const cb = boardOfTodo(t)
+    return (
+      <li
+        key={t.id}
+        className={cn(
+          'flex items-center gap-3 border-b border-line px-4 py-3 last:border-0 transition-colors',
+          mine
+            ? 'border-l-2 border-l-sage-400 bg-sage-50/50 hover:bg-sage-50'
+            : 'hover:bg-sand-50/60',
+        )}
+      >
+        <input
+          type="checkbox"
+          checked={t.is_done}
+          onChange={() => toggle(t)}
+          className="h-4 w-4 shrink-0 cursor-pointer accent-sage-500"
+          aria-label="Erledigt"
+        />
+
+        <div className="min-w-0 flex-1">
+          <p className={cn('text-sm', t.is_done ? 'text-ink-faint line-through' : 'text-ink')}>
+            {t.text}
+          </p>
+          {t.board_cards ? (
+            <Link
+              to={`/${cb === 'daily' ? 'daily' : 'board'}?card=${t.card_id}`}
+              className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-muted hover:text-sage-600"
+            >
+              <ExternalLink className="h-3 w-3" />
+              {t.board_cards.title}
+            </Link>
+          ) : (
+            <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-faint">
+              <Briefcase className="h-3 w-3" />
+              Ohne Projekt
+            </span>
+          )}
+        </div>
+
+        {t.due_date && (
+          <span
+            className={cn(
+              'hidden shrink-0 items-center gap-1 text-xs sm:inline-flex',
+              isOverdue(t.due_date) && !t.is_done ? 'text-terracotta-600' : 'text-ink-muted',
+            )}
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            {formatShortDate(t.due_date)}
+          </span>
+        )}
+
+        <AssigneeDisplay isTeam={t.is_team} names={names} />
+      </li>
+    )
+  }
+
   return (
     <div>
       <PageHeader
@@ -179,12 +268,25 @@ export function TodosPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Projekt">
               <Select value={newCard} onChange={(e) => setNewCard(e.target.value)}>
-                <option value="">Daily Business (kein Projekt)</option>
-                {cards.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.title}
-                  </option>
-                ))}
+                <option value="">Ohne Projekt</option>
+                <optgroup label="Saisonplanung">
+                  {cards
+                    .filter((c) => colBoard[c.column_id] === 'season')
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Daily Business">
+                  {cards
+                    .filter((c) => colBoard[c.column_id] === 'daily')
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                </optgroup>
               </Select>
             </Field>
             <Field label="Fällig am">
@@ -272,66 +374,26 @@ export function TodosPage() {
           description="Lege ein neues To-do an oder erstelle welche direkt auf den Board-Karten."
         />
       ) : (
-        <ul className="overflow-hidden rounded-xl border border-line bg-surface">
-          {filtered.map((t) => {
-            const mine = isMineRow(t)
-            const names = [...assigneesOf(t.id)].map((id) => nameOf(id)).filter(Boolean)
+        // Gruppiert nach Board: Saisonplanung, Daily Business, Ohne Projekt.
+        <div className="space-y-6">
+          {GROUPS.map((g) => {
+            const items = filtered.filter((t) => groupOf(t) === g.key)
+            if (items.length === 0) return null
             return (
-              <li
-                key={t.id}
-                className={cn(
-                  'flex items-center gap-3 border-b border-line px-4 py-3 last:border-0 transition-colors',
-                  mine
-                    ? 'border-l-2 border-l-sage-400 bg-sage-50/50 hover:bg-sage-50'
-                    : 'hover:bg-sand-50/60',
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={t.is_done}
-                  onChange={() => toggle(t)}
-                  className="h-4 w-4 shrink-0 cursor-pointer accent-sage-500"
-                  aria-label="Erledigt"
-                />
-
-                <div className="min-w-0 flex-1">
-                  <p className={cn('text-sm', t.is_done ? 'text-ink-faint line-through' : 'text-ink')}>
-                    {t.text}
-                  </p>
-                  {t.board_cards ? (
-                    <Link
-                      to={`/board?card=${t.card_id}`}
-                      className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-muted hover:text-sage-600"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      {t.board_cards.title}
-                    </Link>
-                  ) : (
-                    <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-faint">
-                      <Briefcase className="h-3 w-3" />
-                      Daily Business
-                    </span>
-                  )}
-                </div>
-
-                {t.due_date && (
-                  <span
-                    className={cn(
-                      'hidden shrink-0 items-center gap-1 text-xs sm:inline-flex',
-                      isOverdue(t.due_date) && !t.is_done ? 'text-terracotta-600' : 'text-ink-muted',
-                    )}
-                  >
-                    <Calendar className="h-3.5 w-3.5" />
-                    {formatShortDate(t.due_date)}
+              <section key={g.key}>
+                <div className="mb-2 flex items-center gap-2">
+                  <h2 className="font-serif text-lg font-semibold text-ink">{g.label}</h2>
+                  <span className="rounded-full bg-sand-200 px-2 py-0.5 text-xs text-ink-muted">
+                    {items.length}
                   </span>
-                )}
-
-                {/* Zuweisung: Team / mehrere Avatare+Namen / Niemand */}
-                <AssigneeDisplay isTeam={t.is_team} names={names} />
-              </li>
+                </div>
+                <ul className="overflow-hidden rounded-xl border border-line bg-surface">
+                  {items.map(renderTodo)}
+                </ul>
+              </section>
             )
           })}
-        </ul>
+        </div>
       )}
     </div>
   )

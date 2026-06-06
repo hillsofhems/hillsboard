@@ -14,7 +14,7 @@ import { SortableContext, arrayMove, horizontalListSortingStrategy } from '@dnd-
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { Plus, HelpCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { BoardCard, BoardColumn } from '@/lib/types'
+import type { BoardCard, BoardColumn, BoardKey } from '@/lib/types'
 import { useProfiles } from '@/hooks/useProfiles'
 import { PageHeader } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/Button'
@@ -25,15 +25,25 @@ import { BoardGuide } from '@/components/board/BoardGuide'
 import { BoardCardItem } from '@/components/board/BoardCardItem'
 import { CardDetail } from '@/components/board/CardDetail'
 import { useToast } from '@/components/ui/Toast'
-import { cn, LABEL_COLORS, BOARD_LABELS } from '@/lib/utils'
+import { cn, LABEL_COLORS, boardLabels } from '@/lib/utils'
 
 type Containers = Record<string, string[]> // columnId -> geordnete cardIds
 
 // LocalStorage-Key, um die Kurzanleitung dauerhaft auszublenden.
 const GUIDE_KEY = 'hills_board_guide_hidden'
 
-/** Kanban-Board: Spalten + Karten mit Drag & Drop (dnd-kit) und Detail-Panel. */
-export function BoardPage() {
+/** Kanban-Board: Spalten + Karten mit Drag & Drop (dnd-kit) und Detail-Panel.
+ *  Über `board` wird zwischen Saisonplanung ('season') und Daily Business
+ *  ('daily') unterschieden. Per `key` in den Routen wird sauber remountet. */
+export function BoardPage({
+  board = 'season',
+  title = 'Board',
+  description,
+}: {
+  board?: BoardKey
+  title?: string
+  description?: string
+}) {
   const { toast } = useToast()
   const { profiles } = useProfiles()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -85,7 +95,7 @@ export function BoardPage() {
     setLoading(true)
     setError(null)
     const [cols, cards, todos] = await Promise.all([
-      supabase.from('board_columns').select('*').order('position'),
+      supabase.from('board_columns').select('*').eq('board', board).order('position'),
       supabase.from('board_cards').select('*').order('position'),
       supabase.from('card_todos').select('card_id,is_done'),
     ])
@@ -101,8 +111,10 @@ export function BoardPage() {
     const cont: Containers = {}
     colList.forEach((c) => (cont[c.id] = []))
     cardList.forEach((card) => {
+      // Nur Karten dieses Boards (deren Spalte hier vorkommt) übernehmen.
+      if (!cont[card.column_id]) return
       cm[card.id] = card
-      ;(cont[card.column_id] ??= []).push(card.id)
+      cont[card.column_id].push(card.id)
     })
 
     const counts: Record<string, { total: number; done: number }> = {}
@@ -244,7 +256,7 @@ export function BoardPage() {
     const maxPos = columns.reduce((m, c) => Math.max(m, c.position), -1)
     const { data, error } = await supabase
       .from('board_columns')
-      .insert({ label, position: maxPos + 1 })
+      .insert({ label, position: maxPos + 1, board })
       .select()
       .single()
     if (error) return toast(error.message, 'error')
@@ -317,8 +329,8 @@ export function BoardPage() {
   return (
     <div>
       <PageHeader
-        title="Board"
-        description="Saison- und Projektplanung. Karten per Drag & Drop verschieben."
+        title={title}
+        description={description ?? 'Karten per Drag & Drop verschieben.'}
         actions={
           <>
             <Button variant="ghost" onClick={() => (showGuide ? hideGuide() : openGuide())}>
@@ -336,7 +348,7 @@ export function BoardPage() {
       {/* Label-Legende: Bedeutung der Farben, kurz oben */}
       <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-line bg-sand-50/60 px-3 py-2 text-xs">
         <span className="font-medium text-ink-soft">Labels:</span>
-        {BOARD_LABELS.map((l) => (
+        {boardLabels(board).map((l) => (
           <span key={l.key} className="inline-flex items-center gap-1.5 text-ink-muted">
             <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', LABEL_COLORS[l.key].dot)} />
             {l.name}
@@ -362,6 +374,7 @@ export function BoardPage() {
                 <BoardColumnView
                   key={col.id}
                   column={col}
+                  board={board}
                   cards={(containers[col.id] ?? []).map((id) => cardMap[id]).filter(Boolean)}
                   profiles={profiles}
                   todoCounts={todoCounts}
@@ -410,6 +423,7 @@ export function BoardPage() {
             {activeCard ? (
               <BoardCardItem
                 card={activeCard}
+                board={board}
                 assigneeName={profiles.find((p) => p.id === activeCard.assignee_id)?.name ?? ''}
                 todoCount={todoCounts[activeCard.id]?.total ?? 0}
                 todoDone={todoCounts[activeCard.id]?.done ?? 0}
@@ -437,6 +451,7 @@ export function BoardPage() {
       {openCard && (
         <CardDetail
           card={openCard}
+          board={board}
           columnLabel={openColumnLabel}
           profiles={profiles}
           onClose={() => setOpenCardId(null)}

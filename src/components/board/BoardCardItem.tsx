@@ -1,12 +1,13 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CheckSquare } from 'lucide-react'
-import type { BoardCard } from '@/lib/types'
+import type { BoardCard, BoardKey } from '@/lib/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { LABEL_COLORS, boardLabelName, cn } from '@/lib/utils'
 
 interface Props {
   card: BoardCard
+  board: BoardKey
   assigneeName: string
   todoCount: number
   todoDone: number
@@ -14,7 +15,7 @@ interface Props {
 }
 
 /** Einzelne Kanban-Karte – sortierbar (dnd-kit) und klickbar (öffnet Detail). */
-export function BoardCardItem({ card, assigneeName, todoCount, todoDone, onClick }: Props) {
+export function BoardCardItem({ card, board, assigneeName, todoCount, todoDone, onClick }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: 'card', columnId: card.column_id },
@@ -47,7 +48,7 @@ export function BoardCardItem({ card, assigneeName, todoCount, todoDone, onClick
             LABEL_COLORS[labelColor].chip,
           )}
         >
-          {boardLabelName(labelColor)}
+          {boardLabelName(labelColor, board)}
         </span>
       )}
 

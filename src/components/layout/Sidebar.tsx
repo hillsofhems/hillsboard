@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutGrid,
+  Briefcase,
   CheckSquare,
   CalendarDays,
   Users,
@@ -16,7 +17,8 @@ import { usePages } from '@/context/PagesContext'
 import { cn } from '@/lib/utils'
 
 const mainNav = [
-  { to: '/board', label: 'Board', icon: LayoutGrid },
+  { to: '/board', label: 'Saisonplanung', icon: LayoutGrid },
+  { to: '/daily', label: 'Daily Business', icon: Briefcase },
   { to: '/todos', label: 'To-dos', icon: CheckSquare },
   { to: '/creative', label: 'Creative Area', icon: Sparkles },
   { to: '/meetings', label: 'Meetings', icon: CalendarDays },

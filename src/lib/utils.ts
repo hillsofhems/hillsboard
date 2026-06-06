@@ -1,4 +1,4 @@
-import type { LabelColor } from './types'
+import type { LabelColor, BoardKey } from './types'
 
 /** Mini-classNames-Helper (kein clsx-Dependency nötig). */
 export function cn(...parts: Array<string | false | null | undefined>): string {
@@ -42,20 +42,34 @@ export const LABEL_COLORS: Record<LabelColor, { dot: string; chip: string; name:
 export const LABEL_COLOR_KEYS = Object.keys(LABEL_COLORS) as LabelColor[]
 
 /**
- * Feste, bedeutungstragende Karten-Labels fürs Board (Farbe -> Bedeutung).
- * Reihenfolge = Reihenfolge in Auswahl & Legende.
+ * Feste, bedeutungstragende Karten-Labels – pro Board unterschiedlich.
+ * Reihenfolge = Reihenfolge in Auswahl & Legende. Gespeichert wird nur die
+ * Farbe (label_color); die Bedeutung ergibt sich aus dem jeweiligen Board.
  */
-export const BOARD_LABELS: { key: LabelColor; name: string }[] = [
-  { key: 'sage', name: 'Neue Produkte' },
-  { key: 'terracotta', name: 'Vertriebsmöglichkeiten' },
-  { key: 'blue', name: 'Events' },
-  { key: 'sand', name: 'Weiteres' },
-]
+export const BOARD_LABELS_BY_BOARD: Record<BoardKey, { key: LabelColor; name: string }[]> = {
+  season: [
+    { key: 'sage', name: 'Keramik' },
+    { key: 'terracotta', name: 'Textilien' },
+    { key: 'blue', name: 'Sets' },
+    { key: 'sand', name: 'Weitere Produkte' },
+  ],
+  daily: [
+    { key: 'sage', name: 'Neue Produkte' },
+    { key: 'terracotta', name: 'Vertriebsmöglichkeiten' },
+    { key: 'blue', name: 'Events' },
+    { key: 'sand', name: 'Weiteres' },
+  ],
+}
 
-/** Name eines Labels anhand der Farbe (Fallback: generischer Farbname). */
-export function boardLabelName(key: LabelColor | null | undefined): string {
+/** Labels eines bestimmten Boards. */
+export function boardLabels(board: BoardKey) {
+  return BOARD_LABELS_BY_BOARD[board] ?? BOARD_LABELS_BY_BOARD.season
+}
+
+/** Name eines Labels anhand Farbe + Board (Fallback: generischer Farbname). */
+export function boardLabelName(key: LabelColor | null | undefined, board: BoardKey): string {
   if (!key) return ''
-  return BOARD_LABELS.find((l) => l.key === key)?.name ?? LABEL_COLORS[key]?.name ?? ''
+  return boardLabels(board).find((l) => l.key === key)?.name ?? LABEL_COLORS[key]?.name ?? ''
 }
 
 /** Datum hübsch (de-DE), z. B. "6. Juni 2026". */

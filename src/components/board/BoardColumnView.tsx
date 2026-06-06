@@ -4,7 +4,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Plus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import type { BoardCard, BoardColumn, Profile } from '@/lib/types'
+import type { BoardCard, BoardColumn, BoardKey, Profile } from '@/lib/types'
 import { BoardCardItem } from './BoardCardItem'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +14,7 @@ interface TodoCounts {
 
 interface Props {
   column: BoardColumn
+  board: BoardKey
   cards: BoardCard[]
   profiles: Profile[]
   todoCounts: TodoCounts
@@ -26,6 +27,7 @@ interface Props {
 /** Eine sortierbare Kanban-Spalte mit Karten-Drop-Zone und Inline-Aktionen. */
 export function BoardColumnView({
   column,
+  board,
   cards,
   profiles,
   todoCounts,
@@ -162,6 +164,7 @@ export function BoardColumnView({
               <BoardCardItem
                 key={card.id}
                 card={card}
+                board={board}
                 assigneeName={assigneeName}
                 todoCount={counts.total}
                 todoDone={counts.done}

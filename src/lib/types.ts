@@ -25,10 +25,13 @@ export interface UserRole {
   created_at: string
 }
 
+export type BoardKey = 'season' | 'daily'
+
 export interface BoardColumn {
   id: string
   label: string
   position: number
+  board: BoardKey
   created_at: string
 }
 

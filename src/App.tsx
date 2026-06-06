@@ -42,7 +42,28 @@ export default function App() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<Navigate to="/board" replace />} />
-        <Route path="/board" element={<BoardPage />} />
+        <Route
+          path="/board"
+          element={
+            <BoardPage
+              key="season"
+              board="season"
+              title="Saisonplanung"
+              description="Saisonale Kollektionen & Projekte. Karten per Drag & Drop verschieben."
+            />
+          }
+        />
+        <Route
+          path="/daily"
+          element={
+            <BoardPage
+              key="daily"
+              board="daily"
+              title="Daily Business"
+              description="Laufende Bereiche: Webseite, Social Media, B2B, B2C, Märkte."
+            />
+          }
+        />
         <Route path="/todos" element={<TodosPage />} />
         <Route path="/meetings" element={<MeetingsPage />} />
         <Route path="/creative" element={<CreativeArea />} />
