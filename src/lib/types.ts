@@ -48,7 +48,7 @@ export interface BoardCard {
 
 export interface CardTodo {
   id: string
-  card_id: string
+  card_id: string | null // NULL = "Daily Business" (kein Projekt verknüpft)
   text: string
   assignee_id: string | null
   due_date: string | null

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckSquare, ExternalLink, Calendar } from 'lucide-react'
+import { CheckSquare, ExternalLink, Calendar, Plus, Briefcase } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { CardTodo } from '@/lib/types'
 import { useAuth } from '@/context/AuthContext'
 import { useProfiles } from '@/hooks/useProfiles'
 import { PageHeader } from '@/components/layout/AppLayout'
-import { Select } from '@/components/ui/Field'
+import { Button } from '@/components/ui/Button'
+import { Field, Input, Select } from '@/components/ui/Field'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner, EmptyState, ErrorState } from '@/components/ui/States'
 import { cn, formatShortDate, isOverdue } from '@/lib/utils'
@@ -16,6 +17,9 @@ import { useToast } from '@/components/ui/Toast'
 type TodoWithCard = CardTodo & {
   board_cards: { title: string; column_id: string } | null
 }
+
+// Karte (Projekt) für die Projekt-Auswahl im Composer.
+type ProjectCard = { id: string; title: string }
 
 type StatusFilter = 'open' | 'done' | 'all'
 
@@ -31,21 +35,62 @@ export function TodosPage() {
   const [person, setPerson] = useState<string>('') // '' = alle, 'none' = ohne
   const [status, setStatus] = useState<StatusFilter>('open')
 
+  // Karten (Projekte) für die Projekt-Auswahl beim Anlegen.
+  const [cards, setCards] = useState<ProjectCard[]>([])
+
+  // Composer-Zustand (neues To-do anlegen).
+  const [composerOpen, setComposerOpen] = useState(false)
+  const [newText, setNewText] = useState('')
+  const [newCard, setNewCard] = useState('') // '' = Daily Business
+  const [newAssignee, setNewAssignee] = useState('')
+  const [newDue, setNewDue] = useState('')
+  const [adding, setAdding] = useState(false)
+
   const load = () => {
     setLoading(true)
     setError(null)
-    supabase
-      .from('card_todos')
-      .select('*, board_cards(title, column_id)')
-      .order('is_done')
-      .order('due_date', { nullsFirst: false })
-      .then(({ data, error }) => {
-        if (error) setError(error.message)
-        setTodos((data as TodoWithCard[]) ?? [])
-        setLoading(false)
-      })
+    Promise.all([
+      supabase
+        .from('card_todos')
+        .select('*, board_cards(title, column_id)')
+        .order('is_done')
+        .order('due_date', { nullsFirst: false }),
+      supabase.from('board_cards').select('id, title').order('title'),
+    ]).then(([todoRes, cardRes]) => {
+      if (todoRes.error) setError(todoRes.error.message)
+      setTodos((todoRes.data as TodoWithCard[]) ?? [])
+      setCards((cardRes.data as ProjectCard[]) ?? [])
+      setLoading(false)
+    })
   }
   useEffect(load, [])
+
+  // Neues To-do anlegen (optional mit Projekt; sonst Daily Business).
+  const addTodo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const text = newText.trim()
+    if (!text) return
+    setAdding(true)
+    const { error } = await supabase.from('card_todos').insert({
+      text,
+      card_id: newCard || null, // null = Daily Business
+      assignee_id: newAssignee || null,
+      due_date: newDue || null,
+      position: 0,
+    })
+    if (error) {
+      toast(error.message, 'error')
+    } else {
+      toast('To-do angelegt.')
+      setNewText('')
+      setNewCard('')
+      setNewAssignee('')
+      setNewDue('')
+      setComposerOpen(false)
+      load()
+    }
+    setAdding(false)
+  }
 
   const toggle = async (t: TodoWithCard) => {
     setTodos((prev) => prev.map((x) => (x.id === t.id ? { ...x, is_done: !x.is_done } : x)))
@@ -75,8 +120,59 @@ export function TodosPage() {
     <div>
       <PageHeader
         title="To-dos"
-        description={`Aufgaben aus allen Board-Karten. ${openCount} offen.`}
+        description={`Aufgaben aus Projekten & Daily Business. ${openCount} offen.`}
+        actions={
+          <Button onClick={() => setComposerOpen((v) => !v)}>
+            <Plus className="h-4 w-4" /> Neues To-do
+          </Button>
+        }
       />
+
+      {/* Composer: To-do anlegen (optional mit Projekt, sonst Daily Business) */}
+      {composerOpen && (
+        <form onSubmit={addTodo} className="card mb-4 flex flex-col gap-3 p-4 animate-slide-up">
+          <Input
+            value={newText}
+            onChange={(e) => setNewText(e.target.value)}
+            placeholder="Was ist zu tun?"
+            autoFocus
+            aria-label="To-do-Text"
+          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Field label="Projekt">
+              <Select value={newCard} onChange={(e) => setNewCard(e.target.value)}>
+                <option value="">Daily Business (kein Projekt)</option>
+                {cards.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Verantwortlich">
+              <Select value={newAssignee} onChange={(e) => setNewAssignee(e.target.value)}>
+                <option value="">Niemand</option>
+                {profiles.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Fällig am">
+              <Input type="date" value={newDue} onChange={(e) => setNewDue(e.target.value)} />
+            </Field>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setComposerOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button type="submit" loading={adding} disabled={!newText.trim()}>
+              Hinzufügen
+            </Button>
+          </div>
+        </form>
+      )}
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         {/* Schnellfilter: meine To-dos */}
@@ -164,7 +260,7 @@ export function TodosPage() {
                   <p className={cn('text-sm', t.is_done ? 'text-ink-faint line-through' : 'text-ink')}>
                     {t.text}
                   </p>
-                  {t.board_cards && (
+                  {t.board_cards ? (
                     <Link
                       to={`/board?card=${t.card_id}`}
                       className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-muted hover:text-sage-600"
@@ -172,6 +268,11 @@ export function TodosPage() {
                       <ExternalLink className="h-3 w-3" />
                       {t.board_cards.title}
                     </Link>
+                  ) : (
+                    <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-faint">
+                      <Briefcase className="h-3 w-3" />
+                      Daily Business
+                    </span>
                   )}
                 </div>
 
