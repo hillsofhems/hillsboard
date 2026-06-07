@@ -202,7 +202,7 @@ export function Welcome() {
         <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
           Hallo {firstName} 👋
         </h1>
-        <p className="mt-1.5 text-ink-muted">Ich hoffe, dir geht es gut heute.</p>
+        <p className="mt-1.5 text-ink-muted">Herzlich willkommen zum Hills of Hems Hub.</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
