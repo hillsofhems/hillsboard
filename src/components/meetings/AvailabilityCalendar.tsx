@@ -10,7 +10,6 @@ import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 
 const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-const WEEKS_SHOWN = 3
 
 // --- Datumshelfer (ohne Bibliothek) ---
 function isoDay(d: Date): string {
@@ -43,29 +42,27 @@ export function AvailabilityCalendar() {
 
   const [rows, setRows] = useState<Availability[]>([])
   const [loading, setLoading] = useState(true)
-  const [weekOffset, setWeekOffset] = useState(0)
+  const [monthOffset, setMonthOffset] = useState(0)
 
   const today = useMemo(() => new Date(), [])
-  const startMonday = useMemo(
-    () => addDays(startOfWeekMonday(today), weekOffset * 7),
-    [today, weekOffset],
-  )
-  const days = useMemo(
-    () => Array.from({ length: WEEKS_SHOWN * 7 }, (_, i) => addDays(startMonday, i)),
-    [startMonday],
-  )
   const todayIso = isoDay(today)
 
-  // Sichtbarer Monatsbereich als Titel (z. B. "Juni 2026" oder "Juni – Juli 2026").
-  const monthLabel = useMemo(() => {
-    const a = days[0]
-    const b = days[days.length - 1]
-    const full = (d: Date) => d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
-    if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) return full(a)
-    if (a.getFullYear() === b.getFullYear())
-      return `${a.toLocaleDateString('de-DE', { month: 'long' })} – ${full(b)}`
-    return `${full(a)} – ${full(b)}`
-  }, [days])
+  // Erster Tag des angezeigten Monats.
+  const monthStart = useMemo(
+    () => new Date(today.getFullYear(), today.getMonth() + monthOffset, 1),
+    [today, monthOffset],
+  )
+  const viewMonth = monthStart.getMonth()
+  const monthLabel = monthStart.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
+
+  // Ganzer Monat im Raster (Mo–So-Wochen, inkl. Rand-Tage der Nachbarmonate).
+  const days = useMemo(() => {
+    const gridStart = startOfWeekMonday(monthStart)
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
+    const gridEnd = addDays(startOfWeekMonday(monthEnd), 6)
+    const count = Math.round((+gridEnd - +gridStart) / 86_400_000) + 1
+    return Array.from({ length: count }, (_, i) => addDays(gridStart, i))
+  }, [monthStart])
 
   const load = () => {
     setLoading(true)
@@ -81,7 +78,7 @@ export function AvailabilityCalendar() {
         setLoading(false)
       })
   }
-  useEffect(load, [startMonday]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [monthStart]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // day -> userId -> status
   const map = useMemo(() => {
@@ -132,17 +129,17 @@ export function AvailabilityCalendar() {
         <h2 className="font-serif text-lg font-semibold text-ink">{monthLabel}</h2>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => setWeekOffset((w) => w - 1)}
+            onClick={() => setMonthOffset((m) => m - 1)}
             className="cursor-pointer rounded-lg border border-line-strong bg-surface p-1.5 text-ink-soft hover:bg-sand-50"
-            aria-label="Frühere Wochen"
+            aria-label="Vorheriger Monat"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setWeekOffset(0)}
+            onClick={() => setMonthOffset(0)}
             className={cn(
               'cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
-              weekOffset === 0
+              monthOffset === 0
                 ? 'border-sage-300 bg-sage-100 text-sage-700'
                 : 'border-line-strong bg-surface text-ink-soft hover:bg-sand-50',
             )}
@@ -150,9 +147,9 @@ export function AvailabilityCalendar() {
             Heute
           </button>
           <button
-            onClick={() => setWeekOffset((w) => w + 1)}
+            onClick={() => setMonthOffset((m) => m + 1)}
             className="cursor-pointer rounded-lg border border-line-strong bg-surface p-1.5 text-ink-soft hover:bg-sand-50"
-            aria-label="Spätere Wochen"
+            aria-label="Nächster Monat"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -203,6 +200,7 @@ export function AvailabilityCalendar() {
               const isToday = dayIso === todayIso
               const isPast = dayIso < todayIso
               const isWeekend = (d.getDay() + 6) % 7 >= 5
+              const isOtherMonth = d.getMonth() !== viewMonth
 
               return (
                 <button
@@ -211,7 +209,8 @@ export function AvailabilityCalendar() {
                   className={cn(
                     'group relative flex min-h-[84px] cursor-pointer flex-col border-b border-r border-line p-1.5 text-left transition-colors last:border-r-0',
                     isWeekend && 'bg-sand-50/40',
-                    isPast && 'opacity-60',
+                    isOtherMonth && 'bg-sand-50/30',
+                    isPast && !isOtherMonth && 'opacity-60',
                     // eigene Markierung tönt die Zelle
                     mine === 'available' && 'bg-sage-50',
                     mine === 'unavailable' && 'bg-red-50',
@@ -221,20 +220,17 @@ export function AvailabilityCalendar() {
                 >
                   {/* Datumszeile */}
                   <div className="mb-1 flex items-center justify-between">
-                    <span className="flex items-baseline gap-1">
-                      <span
-                        className={cn(
-                          'inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs',
-                          isToday ? 'bg-sage-500 font-semibold text-white' : 'text-ink-soft',
-                        )}
-                      >
-                        {d.getDate()}
-                      </span>
-                      {d.getDate() === 1 && (
-                        <span className="text-2xs font-medium uppercase text-ink-faint">
-                          {d.toLocaleDateString('de-DE', { month: 'short' })}
-                        </span>
+                    <span
+                      className={cn(
+                        'inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs',
+                        isToday
+                          ? 'bg-sage-500 font-semibold text-white'
+                          : isOtherMonth
+                            ? 'text-ink-faint'
+                            : 'text-ink-soft',
                       )}
+                    >
+                      {d.getDate()}
                     </span>
                     {allHere && <CalendarCheck className="h-3.5 w-3.5 text-sage-600" />}
                   </div>
