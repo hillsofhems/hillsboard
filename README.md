@@ -10,7 +10,8 @@ Profile · Team & Rollen (mit Account-Verknüpfung & Hervorhebung eigener Rollen
 Admin-Bereich · **zwei Kanban-Boards** (Saisonplanung & Daily Business, je eigene
 farbige Labels) · To-dos (mehrere Personen/Team, projekt- oder „Daily-Business"-
 gebunden, eigene To-do-Seite gruppiert nach Board) · Meetings (Agenda vorab +
-Protokoll, Anstehend/Vergangen) · **Creative Area** (Brainstorming-Bubbles) ·
+Protokoll, Anstehend/Vergangen, **Team-Verfügbarkeit/Kalender**) ·
+**Creative Area** (Brainstorming-Bubbles) ·
 **Finanzen** (GuV + Bilanz pro Jahr) · Info-Seiten (Text + Tabellen) · Datei-Links.
 
 ---
@@ -50,8 +51,9 @@ Die SQL-Dateien liegen in [`supabase/migrations`](supabase/migrations) und müss
 | `0009_second_board.sql` | Zweites Board „Daily Business" (`board`-Schlüssel) |
 | `0010_finance.sql` | Finanzen (`finance_entries`) + 2025-Seed |
 | `0011_team_message.sql` | Nachricht ans Team (`team_messages`) |
+| `0012_availability.sql` | Team-Verfügbarkeit / Meeting-Kalender (`availability`) |
 
-> Tipp: Alle Dateien einfach **in numerischer Reihenfolge** (0001 → 0011)
+> Tipp: Alle Dateien einfach **in numerischer Reihenfolge** (0001 → 0012)
 > nacheinander im SQL Editor ausführen. Jede ist idempotent bzw. nutzt
 > `if not exists`, ein erneutes Ausführen schadet also nicht.
 
@@ -115,7 +117,7 @@ App läuft auf <http://localhost:5173>.
 
 **Erweiterungen:** `card_todo_assignees` (Mehrfach-Zuweisung) · `ideas` +
 `idea_reactions` (Creative Area) · `finance_entries` (Finanzen) · `team_messages`
-(Team-Nachrichten)
+(Team-Nachrichten) · `availability` (Team-Verfügbarkeit / Meeting-Kalender)
 
 **Wichtige Felder:**
 - `board_columns.board` – `'season'` (Saisonplanung) | `'daily'` (Daily Business)

@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Avatar } from '@/components/ui/Avatar'
 import { RichTextEditor, RichTextView } from '@/components/ui/RichText'
+import { AvailabilityCalendar } from '@/components/meetings/AvailabilityCalendar'
 import { Spinner, EmptyState, ErrorState } from '@/components/ui/States'
 import { cn, formatDateTime, toDateTimeLocal } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
@@ -41,6 +42,7 @@ export function MeetingsPage() {
   const [editing, setEditing] = useState<MeetingWithParticipants | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Meeting | null>(null)
   const [busy, setBusy] = useState(false)
+  const [tab, setTab] = useState<'termine' | 'verfuegbarkeit'>('termine')
 
   const load = async () => {
     setLoading(true)
@@ -200,15 +202,41 @@ export function MeetingsPage() {
     <div>
       <PageHeader
         title="Meetings"
-        description="Anstehende Termine mit Agenda – und Protokolle der vergangenen."
+        description="Termine mit Agenda & Protokoll – plus Team-Verfügbarkeit."
         actions={
-          <Button onClick={() => setEditing('new')}>
-            <Plus className="h-4 w-4" /> Meeting
-          </Button>
+          tab === 'termine' && (
+            <Button onClick={() => setEditing('new')}>
+              <Plus className="h-4 w-4" /> Meeting
+            </Button>
+          )
         }
       />
 
-      {loading ? (
+      {/* Tabs: Termine / Verfügbarkeit */}
+      <div className="mb-6 inline-flex rounded-lg border border-line bg-surface p-1">
+        <button
+          onClick={() => setTab('termine')}
+          className={cn(
+            'cursor-pointer rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
+            tab === 'termine' ? 'bg-sage-500 text-white' : 'text-ink-soft hover:bg-sand-100',
+          )}
+        >
+          Termine
+        </button>
+        <button
+          onClick={() => setTab('verfuegbarkeit')}
+          className={cn(
+            'cursor-pointer rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
+            tab === 'verfuegbarkeit' ? 'bg-sage-500 text-white' : 'text-ink-soft hover:bg-sand-100',
+          )}
+        >
+          Verfügbarkeit
+        </button>
+      </div>
+
+      {tab === 'verfuegbarkeit' ? (
+        <AvailabilityCalendar />
+      ) : loading ? (
         <Spinner label="Meetings werden geladen …" />
       ) : error ? (
         <ErrorState message={error} onRetry={load} />

@@ -127,6 +127,14 @@ export interface TeamMessage {
   created_at: string
 }
 
+export type AvailabilityStatus = 'available' | 'maybe'
+
+export interface Availability {
+  user_id: string
+  day: string // YYYY-MM-DD
+  status: AvailabilityStatus
+}
+
 export type FileSource = 'manual' | 'gdrive'
 
 export type FinanceSection = 'income' | 'expense' | 'asset' | 'liability'
