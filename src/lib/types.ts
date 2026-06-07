@@ -127,7 +127,7 @@ export interface TeamMessage {
   created_at: string
 }
 
-export type AvailabilityStatus = 'available' | 'maybe'
+export type AvailabilityStatus = 'available' | 'unavailable'
 
 export interface Availability {
   user_id: string

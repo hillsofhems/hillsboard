@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Check, CircleHelp, CalendarCheck } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, X, CalendarCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Availability, AvailabilityStatus } from '@/lib/types'
 import { useAuth } from '@/context/AuthContext'
@@ -56,6 +56,17 @@ export function AvailabilityCalendar() {
   )
   const todayIso = isoDay(today)
 
+  // Sichtbarer Monatsbereich als Titel (z. B. "Juni 2026" oder "Juni – Juli 2026").
+  const monthLabel = useMemo(() => {
+    const a = days[0]
+    const b = days[days.length - 1]
+    const full = (d: Date) => d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
+    if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) return full(a)
+    if (a.getFullYear() === b.getFullYear())
+      return `${a.toLocaleDateString('de-DE', { month: 'long' })} – ${full(b)}`
+    return `${full(a)} – ${full(b)}`
+  }, [days])
+
   const load = () => {
     setLoading(true)
     const from = isoDay(days[0])
@@ -89,7 +100,7 @@ export function AvailabilityCalendar() {
     if (!meId) return
     const current = myStatus(day)
     const next: AvailabilityStatus | null =
-      current === 'available' ? 'maybe' : current === 'maybe' ? null : 'available'
+      current === 'available' ? 'unavailable' : current === 'unavailable' ? null : 'available'
 
     // optimistisch
     setRows((prev) => {
@@ -116,8 +127,9 @@ export function AvailabilityCalendar() {
 
   return (
     <div>
-      {/* Kopf: Navigation + Legende */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      {/* Kopf: Monats-Titel + Navigation */}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="font-serif text-lg font-semibold text-ink">{monthLabel}</h2>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setWeekOffset((w) => w - 1)}
@@ -145,25 +157,24 @@ export function AvailabilityCalendar() {
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
-
-        <div className="flex items-center gap-4 text-xs text-ink-muted">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-full bg-sage-400" /> Da
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-full bg-amber-300" /> Könnte
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <CalendarCheck className="h-3.5 w-3.5 text-sage-600" /> alle da
-          </span>
-        </div>
       </div>
 
-      <p className="mb-3 text-sm text-ink-muted">
-        Klicke auf einen Tag, um deine Verfügbarkeit zu setzen: frei →{' '}
-        <span className="font-medium text-sage-700">Da</span> →{' '}
-        <span className="font-medium text-amber-700">Könnte</span> → frei.
-      </p>
+      {/* Legende + Anleitung */}
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-ink-muted">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-full bg-sage-500" /> Da
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-full bg-red-500" /> Kann nicht
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <CalendarCheck className="h-3.5 w-3.5 text-sage-600" /> alle da
+        </span>
+        <span className="text-ink-faint">
+          · Klick: frei → <span className="font-medium text-sage-700">Da</span> →{' '}
+          <span className="font-medium text-red-600">Kann nicht</span> → frei
+        </span>
+      </div>
 
       {loading ? (
         <Spinner label="Verfügbarkeit wird geladen …" />
@@ -203,20 +214,27 @@ export function AvailabilityCalendar() {
                     isPast && 'opacity-60',
                     // eigene Markierung tönt die Zelle
                     mine === 'available' && 'bg-sage-50',
-                    mine === 'maybe' && 'bg-amber-50',
+                    mine === 'unavailable' && 'bg-red-50',
                     'hover:bg-sand-100/70',
                   )}
                   title="Klicken: deine Verfügbarkeit ändern"
                 >
                   {/* Datumszeile */}
                   <div className="mb-1 flex items-center justify-between">
-                    <span
-                      className={cn(
-                        'inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs',
-                        isToday ? 'bg-sage-500 font-semibold text-white' : 'text-ink-soft',
+                    <span className="flex items-baseline gap-1">
+                      <span
+                        className={cn(
+                          'inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs',
+                          isToday ? 'bg-sage-500 font-semibold text-white' : 'text-ink-soft',
+                        )}
+                      >
+                        {d.getDate()}
+                      </span>
+                      {d.getDate() === 1 && (
+                        <span className="text-2xs font-medium uppercase text-ink-faint">
+                          {d.toLocaleDateString('de-DE', { month: 'short' })}
+                        </span>
                       )}
-                    >
-                      {d.getDate()}
                     </span>
                     {allHere && <CalendarCheck className="h-3.5 w-3.5 text-sage-600" />}
                   </div>
@@ -232,7 +250,7 @@ export function AvailabilityCalendar() {
                           title={`${nameOf(p.id)} · ${s === 'available' ? 'Da' : 'Könnte'}`}
                           className={cn(
                             'rounded-full ring-2',
-                            s === 'available' ? 'ring-sage-400' : 'ring-amber-300',
+                            s === 'available' ? 'ring-sage-400' : 'ring-red-400',
                             p.id === meId && 'ring-offset-1 ring-offset-surface',
                           )}
                         >
@@ -247,15 +265,15 @@ export function AvailabilityCalendar() {
                     <span
                       className={cn(
                         'mt-auto inline-flex w-fit items-center gap-0.5 rounded px-1 text-2xs font-medium',
-                        mine === 'available' ? 'text-sage-700' : 'text-amber-700',
+                        mine === 'available' ? 'text-sage-700' : 'text-red-600',
                       )}
                     >
                       {mine === 'available' ? (
                         <Check className="h-3 w-3" />
                       ) : (
-                        <CircleHelp className="h-3 w-3" />
+                        <X className="h-3 w-3" />
                       )}
-                      {mine === 'available' ? 'Du: Da' : 'Du: Könnte'}
+                      {mine === 'available' ? 'Du: Da' : 'Du: Kann nicht'}
                     </span>
                   )}
                 </button>
