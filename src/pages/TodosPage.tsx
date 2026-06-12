@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckSquare, ExternalLink, Calendar, Plus, Briefcase } from 'lucide-react'
+import { CheckSquare, ExternalLink, Calendar, Plus, Briefcase, Activity, ListTodo } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { CardTodo, CardTodoAssignee, BoardKey } from '@/lib/types'
 import { useAuth } from '@/context/AuthContext'
@@ -46,6 +46,7 @@ export function TodosPage() {
   const [error, setError] = useState<string | null>(null)
   const [person, setPerson] = useState<string>('') // '' = alle, 'none' = ohne
   const [status, setStatus] = useState<StatusFilter>('open')
+  const [view, setView] = useState<'tasks' | 'activity'>('tasks')
   // Frisch abgehaktes To-do (Notiz-Editor öffnet automatisch).
   const [justCheckedId, setJustCheckedId] = useState<string | null>(null)
 
@@ -178,7 +179,26 @@ export function TodosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todos, status, person, assignees])
 
+  // Aktivitäten-Feed: erledigte To-dos (gefiltert nach Person), neueste zuerst.
+  const doneFeed = useMemo(() => {
+    return todos
+      .filter((t) => t.is_done)
+      .filter((t) => {
+        const set = assignees[t.id] ?? new Set<string>()
+        if (person === 'none' && (t.is_team || set.size > 0)) return false
+        if (person && person !== 'none' && !t.is_team && !set.has(person)) return false
+        return true
+      })
+      .sort((a, b) => {
+        const ta = a.done_at ? new Date(a.done_at).getTime() : 0
+        const tb = b.done_at ? new Date(b.done_at).getTime() : 0
+        return tb - ta
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todos, person, assignees])
+
   const openCount = todos.filter((t) => !t.is_done).length
+  const doneCount = todos.filter((t) => t.is_done).length
   // Offene eigene To-dos (für den Zähler am Schnellfilter).
   const myOpenCount = todos.filter((t) => !t.is_done && isMineRow(t)).length
   const mineActive = Boolean(meId) && person === meId
@@ -270,6 +290,39 @@ export function TodosPage() {
     )
   }
 
+  // Ein Aktivitäten-Eintrag (erledigtes To-do mit Notiz) im Feed.
+  const renderActivity = (t: TodoWithCard) => {
+    const cb = boardOfTodo(t)
+    return (
+      <div key={t.id} className="card flex gap-3 p-3 animate-slide-up">
+        <Avatar name={nameOf(t.done_by) || '?'} size="sm" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-ink">{t.text}</p>
+          {t.board_cards ? (
+            <Link
+              to={`/${cb === 'daily' ? 'daily' : 'board'}?card=${t.card_id}`}
+              className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-muted hover:text-sage-600"
+            >
+              <ExternalLink className="h-3 w-3" />
+              {t.board_cards.title}
+            </Link>
+          ) : (
+            <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-faint">
+              <Briefcase className="h-3 w-3" />
+              Ohne Projekt
+            </span>
+          )}
+          <TodoDoneSection
+            todo={t}
+            byName={nameOf(t.done_by)}
+            autoEdit={justCheckedId === t.id}
+            onSaveComment={(comment) => saveComment(t.id, comment)}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <PageHeader
@@ -281,6 +334,40 @@ export function TodosPage() {
           </Button>
         }
       />
+
+      {/* Umschalter: Aufgabenliste vs. Aktivitäten-Feed */}
+      <div className="mb-4 inline-flex rounded-lg border border-line-strong bg-surface p-0.5">
+        {(
+          [
+            { key: 'tasks', label: 'Aufgaben', icon: ListTodo, count: openCount },
+            { key: 'activity', label: 'Aktivität', icon: Activity, count: doneCount },
+          ] as const
+        ).map((tab) => {
+          const active = view === tab.key
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setView(tab.key)}
+              aria-pressed={active}
+              className={cn(
+                'flex h-9 cursor-pointer items-center gap-2 rounded-md px-3.5 text-sm font-medium transition-colors',
+                active ? 'bg-sage-100 text-sage-700' : 'text-ink-soft hover:bg-sand-50',
+              )}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+              <span
+                className={cn(
+                  'rounded-full px-1.5 py-0.5 text-2xs',
+                  active ? 'bg-sage-200 text-sage-700' : 'bg-sand-200 text-ink-muted',
+                )}
+              >
+                {tab.count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
 
       {/* Composer: To-do anlegen (optional mit Projekt, sonst Daily Business) */}
       {composerOpen && (
@@ -378,22 +465,35 @@ export function TodosPage() {
           ))}
           <option value="none">Ohne Zuweisung</option>
         </Select>
-        <Select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as StatusFilter)}
-          className="sm:w-44"
-          aria-label="Nach Status filtern"
-        >
-          <option value="open">Offen</option>
-          <option value="done">Erledigt</option>
-          <option value="all">Alle</option>
-        </Select>
+        {view === 'tasks' && (
+          <Select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as StatusFilter)}
+            className="sm:w-44"
+            aria-label="Nach Status filtern"
+          >
+            <option value="open">Offen</option>
+            <option value="done">Erledigt</option>
+            <option value="all">Alle</option>
+          </Select>
+        )}
       </div>
 
       {loading ? (
         <Spinner label="To-dos werden geladen …" />
       ) : error ? (
         <ErrorState message={error} onRetry={load} />
+      ) : view === 'activity' ? (
+        // Aktivitäten-Feed: erledigte To-dos mit Kommentaren, neueste zuerst.
+        doneFeed.length === 0 ? (
+          <EmptyState
+            icon={Activity}
+            title="Noch keine Aktivität"
+            description="Sobald To-dos abgehakt werden, erscheinen sie hier mit Kommentar, Person und Zeitpunkt."
+          />
+        ) : (
+          <div className="space-y-2">{doneFeed.map(renderActivity)}</div>
+        )
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={CheckSquare}
