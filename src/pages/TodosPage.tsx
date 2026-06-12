@@ -169,7 +169,8 @@ export function TodosPage() {
 
   const filtered = useMemo(() => {
     return todos.filter((t) => {
-      if (status === 'open' && t.is_done) return false
+      // Frisch abgehaktes To-do sichtbar lassen, bis der Kommentar gesetzt ist.
+      if (status === 'open' && t.is_done && t.id !== justCheckedId) return false
       if (status === 'done' && !t.is_done) return false
       const set = assignees[t.id] ?? new Set<string>()
       if (person === 'none' && (t.is_team || set.size > 0)) return false
@@ -177,7 +178,7 @@ export function TodosPage() {
       return true
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todos, status, person, assignees])
+  }, [todos, status, person, assignees, justCheckedId])
 
   // Aktivitäten-Feed: erledigte To-dos (gefiltert nach Person), neueste zuerst.
   const doneFeed = useMemo(() => {
@@ -283,6 +284,7 @@ export function TodosPage() {
               byName={nameOf(t.done_by)}
               autoEdit={justCheckedId === t.id}
               onSaveComment={(comment) => saveComment(t.id, comment)}
+              onClose={() => setJustCheckedId((cur) => (cur === t.id ? null : cur))}
             />
           </div>
         )}
@@ -317,6 +319,7 @@ export function TodosPage() {
             byName={nameOf(t.done_by)}
             autoEdit={justCheckedId === t.id}
             onSaveComment={(comment) => saveComment(t.id, comment)}
+            onClose={() => setJustCheckedId((cur) => (cur === t.id ? null : cur))}
           />
         </div>
       </div>

@@ -24,11 +24,14 @@ export function TodoDoneSection({
   byName,
   onSaveComment,
   autoEdit,
+  onClose,
 }: {
   todo: CardTodo
   byName: string
   onSaveComment: (comment: string | null) => void
   autoEdit?: boolean
+  /** Wird aufgerufen, wenn der Editor geschlossen wird (Speichern/Abbrechen). */
+  onClose?: () => void
 }) {
   const [editing, setEditing] = useState(Boolean(autoEdit))
   const [draft, setDraft] = useState(todo.done_comment ?? '')
@@ -37,10 +40,12 @@ export function TodoDoneSection({
     const v = draft.trim()
     onSaveComment(v || null)
     setEditing(false)
+    onClose?.()
   }
   const cancel = () => {
     setDraft(todo.done_comment ?? '')
     setEditing(false)
+    onClose?.()
   }
 
   return (
