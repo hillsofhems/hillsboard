@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Field'
 import { Avatar } from '@/components/ui/Avatar'
 import { AssigneePicker, AssigneeDisplay } from '@/components/todos/AssigneePicker'
+import { TodoDoneSection, doneFields } from '@/components/todos/TodoDone'
 import { Spinner, EmptyState, ErrorState } from '@/components/ui/States'
 import { cn, formatShortDate, isOverdue } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
@@ -45,6 +46,8 @@ export function TodosPage() {
   const [error, setError] = useState<string | null>(null)
   const [person, setPerson] = useState<string>('') // '' = alle, 'none' = ohne
   const [status, setStatus] = useState<StatusFilter>('open')
+  // Frisch abgehaktes To-do (Notiz-Editor öffnet automatisch).
+  const [justCheckedId, setJustCheckedId] = useState<string | null>(null)
 
   // Karten (Projekte) für die Projekt-Auswahl beim Anlegen.
   const [cards, setCards] = useState<ProjectCard[]>([])
@@ -140,11 +143,21 @@ export function TodosPage() {
   }
 
   const toggle = async (t: TodoWithCard) => {
-    setTodos((prev) => prev.map((x) => (x.id === t.id ? { ...x, is_done: !x.is_done } : x)))
+    const checked = !t.is_done
+    const fields = doneFields(checked, meId)
+    setJustCheckedId(checked ? t.id : null)
+    setTodos((prev) => prev.map((x) => (x.id === t.id ? { ...x, ...fields } : x)))
+    const { error } = await supabase.from('card_todos').update(fields).eq('id', t.id)
+    if (error) toast(error.message, 'error')
+  }
+
+  // Abschluss-Notiz eines To-dos speichern.
+  const saveComment = async (id: string, comment: string | null) => {
+    setTodos((prev) => prev.map((x) => (x.id === id ? { ...x, done_comment: comment } : x)))
     const { error } = await supabase
       .from('card_todos')
-      .update({ is_done: !t.is_done })
-      .eq('id', t.id)
+      .update({ done_comment: comment })
+      .eq('id', id)
     if (error) toast(error.message, 'error')
   }
 
@@ -192,53 +205,67 @@ export function TodosPage() {
       <li
         key={t.id}
         className={cn(
-          'flex items-center gap-3 border-b border-line px-4 py-3 last:border-0 transition-colors',
+          'border-b border-line last:border-0 transition-colors',
           mine
             ? 'border-l-2 border-l-sage-400 bg-sage-50/50 hover:bg-sage-50'
             : 'hover:bg-sand-50/60',
         )}
       >
-        <input
-          type="checkbox"
-          checked={t.is_done}
-          onChange={() => toggle(t)}
-          className="h-4 w-4 shrink-0 cursor-pointer accent-sage-500"
-          aria-label="Erledigt"
-        />
+        <div className="flex items-center gap-3 px-4 py-3">
+          <input
+            type="checkbox"
+            checked={t.is_done}
+            onChange={() => toggle(t)}
+            className="h-4 w-4 shrink-0 cursor-pointer accent-sage-500"
+            aria-label="Erledigt"
+          />
 
-        <div className="min-w-0 flex-1">
-          <p className={cn('text-sm', t.is_done ? 'text-ink-faint line-through' : 'text-ink')}>
-            {t.text}
-          </p>
-          {t.board_cards ? (
-            <Link
-              to={`/${cb === 'daily' ? 'daily' : 'board'}?card=${t.card_id}`}
-              className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-muted hover:text-sage-600"
+          <div className="min-w-0 flex-1">
+            <p className={cn('text-sm', t.is_done ? 'text-ink-faint line-through' : 'text-ink')}>
+              {t.text}
+            </p>
+            {t.board_cards ? (
+              <Link
+                to={`/${cb === 'daily' ? 'daily' : 'board'}?card=${t.card_id}`}
+                className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-muted hover:text-sage-600"
+              >
+                <ExternalLink className="h-3 w-3" />
+                {t.board_cards.title}
+              </Link>
+            ) : (
+              <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-faint">
+                <Briefcase className="h-3 w-3" />
+                Ohne Projekt
+              </span>
+            )}
+          </div>
+
+          {t.due_date && (
+            <span
+              className={cn(
+                'hidden shrink-0 items-center gap-1 text-xs sm:inline-flex',
+                isOverdue(t.due_date) && !t.is_done ? 'text-terracotta-600' : 'text-ink-muted',
+              )}
             >
-              <ExternalLink className="h-3 w-3" />
-              {t.board_cards.title}
-            </Link>
-          ) : (
-            <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-ink-faint">
-              <Briefcase className="h-3 w-3" />
-              Ohne Projekt
+              <Calendar className="h-3.5 w-3.5" />
+              {formatShortDate(t.due_date)}
             </span>
           )}
+
+          <AssigneeDisplay isTeam={t.is_team} names={names} />
         </div>
 
-        {t.due_date && (
-          <span
-            className={cn(
-              'hidden shrink-0 items-center gap-1 text-xs sm:inline-flex',
-              isOverdue(t.due_date) && !t.is_done ? 'text-terracotta-600' : 'text-ink-muted',
-            )}
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            {formatShortDate(t.due_date)}
-          </span>
+        {/* Abschluss-Notiz (nur bei erledigten To-dos) */}
+        {t.is_done && (
+          <div className="px-4 pb-3 pl-11">
+            <TodoDoneSection
+              todo={t}
+              byName={nameOf(t.done_by)}
+              autoEdit={justCheckedId === t.id}
+              onSaveComment={(comment) => saveComment(t.id, comment)}
+            />
+          </div>
         )}
-
-        <AssigneeDisplay isTeam={t.is_team} names={names} />
       </li>
     )
   }

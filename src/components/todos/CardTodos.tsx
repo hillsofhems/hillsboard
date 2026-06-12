@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { CardTodo, CardTodoAssignee, Profile } from '@/lib/types'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Field'
 import { AssigneePicker } from './AssigneePicker'
+import { TodoDoneSection, doneFields } from './TodoDone'
+import { useAuth } from '@/context/AuthContext'
 import { cn, isOverdue } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 
@@ -22,12 +24,22 @@ export function CardTodos({
   onChange?: () => void
 }) {
   const { toast } = useToast()
+  const { profile } = useAuth()
+  const meId = profile?.id
   const [todos, setTodos] = useState<CardTodo[]>([])
   // todoId -> Menge zugewiesener User-IDs
   const [assignees, setAssignees] = useState<Record<string, Set<string>>>({})
   const [loading, setLoading] = useState(true)
   const [newText, setNewText] = useState('')
   const [adding, setAdding] = useState(false)
+  // To-do, das gerade frisch abgehakt wurde (Notiz-Editor öffnet automatisch).
+  const [justCheckedId, setJustCheckedId] = useState<string | null>(null)
+
+  const nameOf = useMemo(() => {
+    const m: Record<string, string> = {}
+    profiles.forEach((p) => (m[p.id] = p.name))
+    return (id: string | null) => (id ? m[id] ?? '' : '')
+  }, [profiles])
 
   const load = async () => {
     const { data: todoData } = await supabase
@@ -113,6 +125,12 @@ export function CardTodos({
 
   const toggleTeam = (todo: CardTodo) => patch(todo.id, { is_team: !todo.is_team })
 
+  // Abhaken/Öffnen: Abschluss-Felder setzen; bei „erledigt" Notiz-Editor öffnen.
+  const toggleDone = (todo: CardTodo, checked: boolean) => {
+    setJustCheckedId(checked ? todo.id : null)
+    patch(todo.id, doneFields(checked, meId))
+  }
+
   const done = todos.filter((t) => t.is_done).length
 
   return (
@@ -150,7 +168,7 @@ export function CardTodos({
                   <input
                     type="checkbox"
                     checked={t.is_done}
-                    onChange={(e) => patch(t.id, { is_done: e.target.checked })}
+                    onChange={(e) => toggleDone(t, e.target.checked)}
                     className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-sage-500"
                     aria-label="Erledigt"
                   />
@@ -203,6 +221,18 @@ export function CardTodos({
                     onToggleTeam={() => toggleTeam(t)}
                   />
                 </div>
+
+                {/* Zeile 4: Abschluss-Notiz (nur bei erledigten To-dos) */}
+                {t.is_done && (
+                  <div className="pl-[26px]">
+                    <TodoDoneSection
+                      todo={t}
+                      byName={nameOf(t.done_by)}
+                      autoEdit={justCheckedId === t.id}
+                      onSaveComment={(comment) => patch(t.id, { done_comment: comment })}
+                    />
+                  </div>
+                )}
               </li>
             )
           })}

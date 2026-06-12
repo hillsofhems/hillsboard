@@ -57,6 +57,9 @@ export interface CardTodo {
   is_team: boolean // true = ganzes Team
   due_date: string | null
   is_done: boolean
+  done_comment: string | null // Optionale Notiz beim Abhaken
+  done_at: string | null // Zeitpunkt des Abhakens
+  done_by: string | null // Wer abgehakt hat
   position: number
   created_at: string
 }
