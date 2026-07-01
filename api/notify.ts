@@ -36,24 +36,50 @@ interface Recipient {
   name: string
 }
 
-/** Baut ein simples HTML-Mail-Layout. */
-function template(title: string, bodyHtml: string): string {
-  const link = APP_URL
-    ? `<p style="margin-top:24px"><a href="${APP_URL}" style="color:#5b7a5b">Zum Hills of Hems Hub &rarr;</a></p>`
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+  )
+}
+
+/** Entfernt HTML-Tags und kürzt Freitext (z. B. Agenda) für die Vorschau. */
+function plainSnippet(html: string, max = 400): string {
+  const text = html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const escaped = escapeHtml(text.length > max ? `${text.slice(0, max)}…` : text)
+  return escaped.replace(/\n/g, '<br />')
+}
+
+/** Rendert eine Liste von "Label: Wert"-Zeilen (Werte sind bereits HTML-sicher). */
+function detailRows(rows: Array<[string, string]>): string {
+  return rows
+    .filter(([, value]) => value)
+    .map(
+      ([label, value]) =>
+        `<tr>
+          <td style="padding:4px 12px 4px 0;color:#6b7280;vertical-align:top;white-space:nowrap">${label}</td>
+          <td style="padding:4px 0;color:#1f2937">${value}</td>
+        </tr>`,
+    )
+    .join('')
+}
+
+/** Baut ein simples HTML-Mail-Layout. path = optionaler Deep-Link (z. B. "/todos"). */
+function template(title: string, bodyHtml: string, path = ''): string {
+  const href = APP_URL ? APP_URL + path : ''
+  const link = href
+    ? `<p style="margin-top:24px"><a href="${href}" style="display:inline-block;background:#5b7a5b;color:#fff;text-decoration:none;padding:8px 16px;border-radius:6px">Im Hills of Hems Hub öffnen &rarr;</a></p>`
     : ''
   return `<div style="font-family:system-ui,-apple-system,sans-serif;color:#1f2937;max-width:560px">
-    <h2 style="color:#5b7a5b;margin-bottom:8px">${title}</h2>
+    <h2 style="color:#5b7a5b;margin-bottom:12px">${title}</h2>
     ${bodyHtml}
     ${link}
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0" />
     <p style="font-size:12px;color:#9ca3af">Automatische Nachricht vom Hills of Hems Hub.</p>
   </div>`
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
-  )
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -84,6 +110,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!type || !id) return res.status(400).json({ error: 'type und id erforderlich.' })
 
   const resend = new Resend(RESEND_API_KEY)
+
+  // Name des Auslösers (Ersteller) für "von wem" in der Mail.
+  const { data: callerProfile } = await admin
+    .from('profiles')
+    .select('name')
+    .eq('id', callerId)
+    .single()
+  const fromName = escapeHtml((callerProfile as { name?: string } | null)?.name || 'einem Teammitglied')
 
   // Hilfsfunktion: Profile (Empfänger) zu einer Menge von User-IDs laden.
   const profilesByIds = async (ids: string[]): Promise<Recipient[]> => {
@@ -121,19 +155,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         timeStyle: 'short',
       })
       subject = `Neues Meeting: ${meeting.title}`
-      const linkLine = meeting.meeting_link
-        ? `<p><strong>Link:</strong> <a href="${escapeHtml(meeting.meeting_link)}">${escapeHtml(meeting.meeting_link)}</a></p>`
+      const meetingLink = meeting.meeting_link
+        ? `<a href="${escapeHtml(meeting.meeting_link)}" style="color:#5b7a5b">${escapeHtml(meeting.meeting_link)}</a>`
+        : ''
+      const agenda = meeting.agenda ? plainSnippet(meeting.agenda) : ''
+      const rows = detailRows([
+        ['Titel', `<strong>${escapeHtml(meeting.title)}</strong>`],
+        ['Wann', `${escapeHtml(when)} Uhr`],
+        ['Angelegt von', fromName],
+        ['Link', meetingLink],
+      ])
+      const agendaBlock = agenda
+        ? `<p style="margin-top:16px;color:#6b7280">Agenda</p><p style="margin-top:0">${agenda}</p>`
         : ''
       html = template(
         'Neues Meeting angelegt',
-        `<p><strong>${escapeHtml(meeting.title)}</strong></p>
-         <p><strong>Wann:</strong> ${escapeHtml(when)} Uhr</p>
-         ${linkLine}`,
+        `<table style="border-collapse:collapse;font-size:15px">${rows}</table>${agendaBlock}`,
+        '/meetings',
       )
     } else if (type === 'todo') {
       const { data: todo } = await admin
         .from('card_todos')
-        .select('text,is_team,due_date')
+        .select('text,is_team,due_date,card_id')
         .eq('id', id)
         .single()
       if (!todo) return res.status(404).json({ error: 'To-do nicht gefunden.' })
@@ -152,15 +195,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       }
 
+      // Ort der Aufgabe: entweder ein Projekt (Karte auf einem Board) oder Daily Business.
+      let ort = 'Daily Business'
+      if (todo.card_id) {
+        const { data: card } = await admin
+          .from('board_cards')
+          .select('title, board_columns(board)')
+          .eq('id', todo.card_id)
+          .single()
+        const rawBoard = (card as { board_columns?: { board?: string } | { board?: string }[] } | null)
+          ?.board_columns
+        const board = Array.isArray(rawBoard) ? rawBoard[0]?.board : rawBoard?.board
+        const boardName = board === 'daily' ? 'Daily Business' : 'Projekte'
+        const cardTitle = (card as { title?: string } | null)?.title
+        ort = cardTitle ? `${escapeHtml(cardTitle)} (${boardName})` : boardName
+      }
+
       subject = `Neue Aufgabe: ${todo.text}`
       const due = todo.due_date
-        ? `<p><strong>Fällig:</strong> ${escapeHtml(
-            new Date(todo.due_date).toLocaleDateString('de-DE', { dateStyle: 'long' }),
-          )}</p>`
+        ? escapeHtml(new Date(todo.due_date).toLocaleDateString('de-DE', { dateStyle: 'long' }))
         : ''
+      const rows = detailRows([
+        ['Aufgabe', `<strong>${escapeHtml(todo.text)}</strong>`],
+        ['Bereich', ort],
+        ['Zugewiesen an', todo.is_team ? 'Ganzes Team' : ''],
+        ['Fällig', due],
+        ['Angelegt von', fromName],
+      ])
       html = template(
         'Neue Aufgabe für dich',
-        `<p>${escapeHtml(todo.text)}</p>${due}`,
+        `<table style="border-collapse:collapse;font-size:15px">${rows}</table>`,
+        '/todos',
       )
     } else {
       return res.status(400).json({ error: 'Unbekannter type.' })
