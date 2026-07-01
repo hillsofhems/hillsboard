@@ -9,6 +9,7 @@ import { TodoDoneSection, doneFields } from './TodoDone'
 import { useAuth } from '@/context/AuthContext'
 import { cn, isOverdue } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
+import { notify } from '@/lib/notify'
 
 /**
  * To-do-Liste einer Kanban-Karte: anlegen, abhaken, Fälligkeit setzen,
@@ -120,6 +121,7 @@ export function CardTodos({
         .from('card_todo_assignees')
         .insert({ todo_id: todoId, user_id: userId })
       if (error) toast(error.message, 'error')
+      else void notify({ type: 'todo', id: todoId, userIds: [userId] })
     }
   }
 

@@ -73,6 +73,7 @@ export interface Meeting {
   id: string
   title: string
   meeting_date: string
+  meeting_link: string // optionaler Link zum Online-Meeting (z. B. Google Meet)
   agenda: string // Tagesordnung (vorab)
   notes: string // Protokoll / Minutes (im Nachhinein)
   created_at: string

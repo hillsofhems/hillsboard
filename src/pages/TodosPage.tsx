@@ -14,6 +14,7 @@ import { TodoDoneSection, doneFields } from '@/components/todos/TodoDone'
 import { Spinner, EmptyState, ErrorState } from '@/components/ui/States'
 import { cn, formatShortDate, isOverdue } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
+import { notify } from '@/lib/notify'
 
 // To-do mit eingebettetem Karten-Titel (für Kontext + Rücklink).
 type TodoWithCard = CardTodo & {
@@ -132,6 +133,8 @@ export function TodosPage() {
         .insert([...newAssignees].map((uid) => ({ todo_id: todoId, user_id: uid })))
       if (aErr) toast(aErr.message, 'error')
     }
+    // Zuständige (bzw. das ganze Team) per E-Mail benachrichtigen.
+    if (newIsTeam || newAssignees.size > 0) void notify({ type: 'todo', id: todoId })
     toast('To-do angelegt.')
     setNewText('')
     setNewCard('')

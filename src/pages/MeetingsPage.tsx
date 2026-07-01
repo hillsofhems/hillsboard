@@ -9,6 +9,7 @@ import {
   ListChecks,
   FileText,
   Clock,
+  Video,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Meeting, Profile } from '@/lib/types'
@@ -25,6 +26,7 @@ import { AvailabilityCalendar } from '@/components/meetings/AvailabilityCalendar
 import { Spinner, EmptyState, ErrorState } from '@/components/ui/States'
 import { cn, formatDateTime, toDateTimeLocal } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
+import { notify } from '@/lib/notify'
 
 type MeetingWithParticipants = Meeting & { participantIds: string[] }
 
@@ -145,6 +147,17 @@ export function MeetingsPage() {
 
         {isOpen && (
           <div className="border-t border-line px-4 py-4 animate-fade-in">
+            {m.meeting_link?.trim() && (
+              <a
+                href={m.meeting_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mb-4 inline-flex items-center gap-1.5 rounded-lg bg-sage-100 px-3 py-2 text-sm font-medium text-sage-700 transition-colors hover:bg-sage-200"
+              >
+                <Video className="h-4 w-4" /> Meeting öffnen
+              </a>
+            )}
+
             {m.participantIds.length > 0 && (
               <div className="mb-4 flex flex-wrap items-center gap-1.5">
                 <Users className="h-3.5 w-3.5 text-ink-faint" />
@@ -353,6 +366,7 @@ function MeetingEditor({
   const [date, setDate] = useState(
     meeting ? toDateTimeLocal(meeting.meeting_date) : toDateTimeLocal(new Date().toISOString()),
   )
+  const [meetingLink, setMeetingLink] = useState(meeting?.meeting_link ?? '')
   const [agenda, setAgenda] = useState(meeting?.agenda ?? '')
   const [notes, setNotes] = useState(meeting?.notes ?? '')
   const [participants, setParticipants] = useState<string[]>(meeting?.participantIds ?? [])
@@ -371,10 +385,12 @@ function MeetingEditor({
       const payload = {
         title: title.trim(),
         meeting_date: new Date(date).toISOString(),
+        meeting_link: meetingLink.trim(),
         agenda,
         notes,
       }
       let meetingId = meeting?.id
+      const isNew = !meeting
       if (meeting) {
         const { error } = await supabase.from('meetings').update(payload).eq('id', meeting.id)
         if (error) throw error
@@ -394,6 +410,8 @@ function MeetingEditor({
           if (error) throw error
         }
       }
+      // Bei neuem Meeting: alle Team-Mitglieder per E-Mail benachrichtigen.
+      if (isNew && meetingId) void notify({ type: 'meeting', id: meetingId })
       toast(meeting ? 'Meeting gespeichert.' : 'Meeting angelegt.')
       onSaved()
     } catch (err) {
@@ -434,6 +452,15 @@ function MeetingEditor({
             <Input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} />
           </Field>
         </div>
+
+        <Field label="Meeting-Link (z. B. Google Meet)">
+          <Input
+            type="url"
+            value={meetingLink}
+            onChange={(e) => setMeetingLink(e.target.value)}
+            placeholder="https://meet.google.com/…"
+          />
+        </Field>
 
         <Field label="Teilnehmer">
           <div className="flex flex-wrap gap-1.5">
