@@ -5,6 +5,7 @@ export interface Profile {
   name: string
   email: string
   is_admin: boolean
+  calendar_token: string // geheimer Token für die persönliche Kalender-Abo-URL
   created_at: string
 }
 
@@ -82,6 +83,20 @@ export interface Meeting {
 export interface MeetingParticipant {
   meeting_id: string
   user_id: string
+}
+
+/** Wichtiger Termin (Markt, Messe, Deadline …) – erscheint im Kalender-Abo. */
+export interface TeamEvent {
+  id: string
+  title: string
+  starts_at: string
+  ends_at: string | null // optional; NULL = 1 Std. bzw. ganztägig
+  all_day: boolean // true = Datum ohne Uhrzeit
+  location: string
+  category: string // freie Kategorie, z. B. „Markt"
+  description: string // Freitext (Rich-Text-HTML)
+  created_at: string
+  created_by: string | null
 }
 
 export interface Page {
