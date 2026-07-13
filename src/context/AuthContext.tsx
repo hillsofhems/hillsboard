@@ -48,23 +48,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true
 
-    // Initiale Session holen.
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!active) return
-      setSession(data.session)
-      if (data.session?.user) await loadProfile(data.session.user.id)
-      setLoading(false)
-    })
-
-    // Auf Login/Logout/Token-Refresh reagieren.
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    // Session-Status kommt komplett über onAuthStateChange — das Event
+    // INITIAL_SESSION deckt den App-Start ab, SIGNED_IN/SIGNED_OUT/TOKEN_REFRESHED
+    // den Rest. Kein separates getSession() nötig.
+    //
+    // WICHTIG: Im Callback dürfen keine Supabase-Aufrufe awaited werden.
+    // supabase-js hält währenddessen einen Lock (navigator.locks), und jede
+    // Query wartet intern auf denselben Lock -> Deadlock, das Portal hängt
+    // beim ersten Laden endlos im Spinner. Deshalb Profil-Laden per
+    // setTimeout aus dem Callback herauslösen.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (!active) return
       setSession(newSession)
       if (newSession?.user) {
-        await loadProfile(newSession.user.id)
+        const userId = newSession.user.id
+        setTimeout(() => {
+          if (!active) return
+          loadProfile(userId).finally(() => {
+            if (active) setLoading(false)
+          })
+        }, 0)
       } else {
         setProfile(null)
         setMyRoles([])
+        setLoading(false)
       }
     })
 
