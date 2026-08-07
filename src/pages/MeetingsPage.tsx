@@ -15,6 +15,7 @@ import {
   CalendarPlus,
   Copy,
   Check,
+  History,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Meeting, Profile, TeamEvent } from '@/lib/types'
@@ -27,7 +28,7 @@ import { Field, Input } from '@/components/ui/Field'
 import { Badge } from '@/components/ui/Badge'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Avatar } from '@/components/ui/Avatar'
-import { RichTextEditor, RichTextView } from '@/components/ui/RichText'
+import { CollapsibleRichText, RichTextEditor, RichTextView } from '@/components/ui/RichText'
 import { AvailabilityCalendar } from '@/components/meetings/AvailabilityCalendar'
 import { Spinner, EmptyState, ErrorState } from '@/components/ui/States'
 import { cn, formatDate, formatDateTime, toDateTimeLocal } from '@/lib/utils'
@@ -85,15 +86,16 @@ export function MeetingsPage() {
     load()
   }, [])
 
-  // Aufteilen in anstehend (Datum >= jetzt, nächster zuerst) und vergangen.
-  const { upcoming, past } = useMemo(() => {
+  // Aufteilen in anstehend (Datum >= jetzt, nächster zuerst), letztes Meeting
+  // (jüngstes vergangenes, hervorgehoben) und die übrigen vergangenen.
+  const { upcoming, lastMeeting, past } = useMemo(() => {
     const now = Date.now()
     const up: MeetingWithParticipants[] = []
     const pa: MeetingWithParticipants[] = []
     meetings.forEach((m) => (new Date(m.meeting_date).getTime() >= now ? up : pa).push(m))
     up.sort((a, b) => +new Date(a.meeting_date) - +new Date(b.meeting_date))
     pa.sort((a, b) => +new Date(b.meeting_date) - +new Date(a.meeting_date))
-    return { upcoming: up, past: pa }
+    return { upcoming: up, lastMeeting: pa[0] ?? null, past: pa.slice(1) }
   }, [meetings])
 
   const remove = async () => {
@@ -122,7 +124,7 @@ export function MeetingsPage() {
     setBusy(false)
   }
 
-  const renderMeeting = (m: MeetingWithParticipants, variant: 'upcoming' | 'past') => {
+  const renderMeeting = (m: MeetingWithParticipants, variant: 'upcoming' | 'last' | 'past') => {
     const isOpen = expanded === m.id
     return (
       <div
@@ -130,6 +132,7 @@ export function MeetingsPage() {
         className={cn(
           'card overflow-hidden',
           variant === 'upcoming' && 'border-l-2 border-l-sage-400',
+          variant === 'last' && 'border-l-2 border-l-amber-400',
         )}
       >
         <button
@@ -139,17 +142,34 @@ export function MeetingsPage() {
           <div
             className={cn(
               'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
-              variant === 'upcoming' ? 'bg-sage-100 text-sage-700' : 'bg-sand-100 text-ink-muted',
+              variant === 'upcoming' && 'bg-sage-100 text-sage-700',
+              variant === 'last' && 'bg-amber-100 text-amber-700',
+              variant === 'past' && 'bg-sand-100 text-ink-muted',
             )}
           >
-            <CalendarDays className="h-5 w-5" />
+            {variant === 'last' ? (
+              <History className="h-5 w-5" />
+            ) : (
+              <CalendarDays className="h-5 w-5" />
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="truncate font-medium text-ink">{m.title}</span>
               {variant === 'upcoming' && <Badge tone="sage">Anstehend</Badge>}
+              {variant === 'last' && <Badge tone="sand">Letztes Meeting</Badge>}
             </div>
-            <div className="text-xs text-ink-muted">{formatDateTime(m.meeting_date)}</div>
+            <div className="text-xs text-ink-muted">
+              {formatDateTime(m.meeting_date)}
+              {variant === 'last' && !isOpen && (
+                <span className="ml-2 inline-flex items-center gap-1 text-amber-700">
+                  <FileText className="h-3 w-3" />
+                  {m.notes?.trim()
+                    ? 'Protokoll & Agenda ansehen'
+                    : 'Noch kein Protokoll – jetzt nachtragen'}
+                </span>
+              )}
+            </div>
           </div>
           {/* Teilnehmer-Avatare */}
           <div className="hidden items-center -space-x-1.5 sm:flex">
@@ -318,6 +338,14 @@ export function MeetingsPage() {
               <div className="space-y-3">{upcoming.map((m) => renderMeeting(m, 'upcoming'))}</div>
             )}
           </section>
+
+          {/* Letztes Meeting: jüngstes vergangenes, mit Verweis auf das Protokoll */}
+          {lastMeeting && (
+            <section>
+              <SectionHeader icon={History} title="Letztes Meeting" count={1} />
+              {renderMeeting(lastMeeting, 'last')}
+            </section>
+          )}
 
           {/* Vergangen */}
           {past.length > 0 && (
@@ -694,9 +722,7 @@ function EventCard({
             )}
           </div>
           {e.description?.trim() && (
-            <div className="mt-2">
-              <RichTextView html={e.description} />
-            </div>
+            <CollapsibleRichText html={e.description} className="mt-2" />
           )}
         </div>
         <div className="flex shrink-0 gap-1">
