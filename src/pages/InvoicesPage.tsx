@@ -385,7 +385,7 @@ export function InvoicesPage() {
                     <th className="px-4 py-3 text-right font-semibold">Brutto</th>
                     <th className="px-4 py-3 font-semibold">Zahlstatus</th>
                     <th className="px-4 py-3 font-semibold">Rechnung</th>
-                    <th className="px-4 py-3 text-right font-semibold">Aktionen</th>
+                    <th className="px-4 py-3 text-right font-semibold" />
                   </tr>
                 </thead>
                 <tbody>
@@ -401,23 +401,23 @@ export function InvoicesPage() {
                     const busy = busyRow === inv?.id || busyRow === storno?.id
                     return (
                       <tr key={o.id} className="border-b border-line last:border-0 hover:bg-sand-50/60">
-                        <td className="whitespace-nowrap px-4 py-2.5 font-medium text-ink">{o.name}</td>
-                        <td className="whitespace-nowrap px-4 py-2.5 text-ink-muted">{fmtDate(o.createdAt)}</td>
-                        <td className="max-w-[240px] truncate px-4 py-2.5 text-ink-soft" title={customerLabel(o)}>
+                        <td className="whitespace-nowrap px-4 py-2 font-medium tabular-nums text-ink">{o.name}</td>
+                        <td className="whitespace-nowrap px-4 py-2 tabular-nums text-ink-muted">{fmtDate(o.createdAt)}</td>
+                        <td className="max-w-[240px] truncate px-4 py-2 text-ink-soft" title={customerLabel(o)}>
                           {customerLabel(o)}
                         </td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2">
                           <Badge tone={isOrderchamp(o) ? 'blue' : 'sand'}>
                             {isOrderchamp(o) ? 'Orderchamp' : 'Onlineshop'}
                           </Badge>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-ink">
+                        <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink">
                           {fmtMoney(Number(o.totalPriceSet.shopMoney.amount), o.totalPriceSet.shopMoney.currencyCode)}
                         </td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2">
                           <Badge tone={status.tone}>{status.label}</Badge>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-2.5">
+                        <td className="whitespace-nowrap px-4 py-2 tabular-nums">
                           {!inv ? (
                             <span className="text-ink-faint">keine</span>
                           ) : storno ? (
@@ -434,36 +434,66 @@ export function InvoicesPage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex justify-end gap-1.5">
+                        <td className="w-0 whitespace-nowrap px-4 py-2">
+                          <div className="flex items-center justify-end gap-1">
                             {!inv && paid && (
                               <Button
                                 size="sm"
+                                variant="secondary"
+                                className="whitespace-nowrap"
                                 onClick={() => setModal({ mode: 'invoice', orderId: o.id, orderName: o.name })}
                                 disabled={settingsIncomplete}
-                                title={settingsIncomplete ? 'Erst Einstellungen ausfüllen' : undefined}
+                                title={settingsIncomplete ? 'Erst Einstellungen ausfüllen' : 'Rechnung erstellen'}
                               >
-                                <FilePlus2 className="h-3.5 w-3.5" /> Rechnung erstellen
+                                <FilePlus2 className="h-3.5 w-3.5 text-sage-600" /> Rechnung erstellen
                               </Button>
                             )}
                             {!inv && !paid && <span className="text-xs text-ink-faint">nicht bezahlt</span>}
                             {inv && !inv.pdf_path && (
-                              <Button size="sm" variant="secondary" loading={busy} onClick={() => regeneratePdf(inv)}>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="whitespace-nowrap"
+                                loading={busy}
+                                onClick={() => regeneratePdf(inv)}
+                                title="PDF fehlt – aus dem Snapshot neu erzeugen"
+                              >
                                 <RefreshCw className="h-3.5 w-3.5" /> PDF erzeugen
                               </Button>
                             )}
                             {inv && inv.pdf_path && (
-                              <Button size="sm" variant="secondary" loading={busyRow === inv.id} onClick={() => openPdf(inv)}>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="whitespace-nowrap"
+                                loading={busyRow === inv.id}
+                                onClick={() => openPdf(inv)}
+                                title={`Rechnung ${inv.number} öffnen`}
+                              >
                                 <ExternalLink className="h-3.5 w-3.5" /> PDF
                               </Button>
                             )}
                             {storno && !storno.pdf_path && (
-                              <Button size="sm" variant="secondary" loading={busyRow === storno.id} onClick={() => regeneratePdf(storno)}>
-                                <RefreshCw className="h-3.5 w-3.5" /> Storno-PDF erzeugen
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="whitespace-nowrap"
+                                loading={busyRow === storno.id}
+                                onClick={() => regeneratePdf(storno)}
+                                title="Storno-PDF fehlt – neu erzeugen"
+                              >
+                                <RefreshCw className="h-3.5 w-3.5" /> Storno-PDF
                               </Button>
                             )}
                             {storno && storno.pdf_path && (
-                              <Button size="sm" variant="secondary" loading={busyRow === storno.id} onClick={() => openPdf(storno)}>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="whitespace-nowrap"
+                                loading={busyRow === storno.id}
+                                onClick={() => openPdf(storno)}
+                                title={`Stornorechnung ${storno.number} öffnen`}
+                              >
                                 <ExternalLink className="h-3.5 w-3.5" /> Storno-PDF
                               </Button>
                             )}
@@ -471,12 +501,14 @@ export function InvoicesPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="text-terracotta-600 hover:bg-terracotta-50"
+                                className="px-2 text-ink-faint hover:bg-terracotta-50 hover:text-terracotta-600"
+                                title="Stornorechnung erstellen"
+                                aria-label="Stornorechnung erstellen"
                                 onClick={() =>
                                   setModal({ mode: 'cancellation', orderId: o.id, orderName: o.name, original: inv })
                                 }
                               >
-                                <Ban className="h-3.5 w-3.5" /> Stornieren
+                                <Ban className="h-4 w-4" />
                               </Button>
                             )}
                           </div>
