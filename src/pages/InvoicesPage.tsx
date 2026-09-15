@@ -5,7 +5,6 @@ import {
   Ban,
   ChevronLeft,
   ChevronRight,
-  Download,
   ExternalLink,
   FilePlus2,
   RefreshCw,
@@ -25,13 +24,12 @@ import {
   loadCustomerOverrides,
   loadInvoiceSettings,
   loadInvoices,
-  loadInvoicesForMonth,
   type ListOrdersParams,
 } from '@/invoices/api'
 import { generateInvoicePdf } from '@/invoices/createInvoice'
-import { buildMonthlyCsv, downloadCsv } from '@/invoices/csv'
-import { fmtDate, fmtMoney, todayBerlin } from '@/invoices/format'
+import { fmtDate, fmtMoney } from '@/invoices/format'
 import { InvoicePreviewModal } from '@/invoices/components/InvoicePreviewModal'
+import { VatSummaryCard } from '@/invoices/components/VatSummaryCard'
 import type {
   InvoiceCustomerOverride,
   InvoiceRow,
@@ -110,8 +108,6 @@ export function InvoicesPage() {
 
   const [modal, setModal] = useState<ModalState>(null)
   const [busyRow, setBusyRow] = useState<string | null>(null)
-  const [exportMonth, setExportMonth] = useState(todayBerlin().slice(0, 7))
-  const [exporting, setExporting] = useState(false)
 
   const loadBase = useCallback(async () => {
     setBaseLoading(true)
@@ -231,25 +227,6 @@ export function InvoicesPage() {
       toast(err instanceof Error ? err.message : 'PDF konnte nicht erzeugt werden.', 'error')
     } finally {
       setBusyRow(null)
-    }
-  }
-
-  const exportCsv = async () => {
-    const [y, m] = exportMonth.split('-').map(Number)
-    if (!y || !m) return
-    setExporting(true)
-    try {
-      const rows = await loadInvoicesForMonth(y, m)
-      if (rows.length === 0) {
-        toast(`Keine Rechnungen im ${exportMonth}.`, 'error')
-        return
-      }
-      downloadCsv(`rechnungen-${exportMonth}.csv`, buildMonthlyCsv(rows))
-      toast(`${rows.length} Rechnung${rows.length === 1 ? '' : 'en'} exportiert.`)
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Export fehlgeschlagen.', 'error')
-    } finally {
-      setExporting(false)
     }
   }
 
@@ -507,25 +484,20 @@ export function InvoicesPage() {
             </div>
           )}
 
-          {/* Paginierung + Export */}
-          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="secondary" onClick={prevPage} disabled={cursorStack.length <= 1 || ordersLoading}>
-                <ChevronLeft className="h-4 w-4" /> Zurück
-              </Button>
-              <span className="text-xs text-ink-muted">Seite {cursorStack.length}</span>
-              <Button size="sm" variant="secondary" onClick={nextPage} disabled={!pageInfo.hasNextPage || ordersLoading}>
-                Weiter <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex items-end gap-2">
-              <Field label="Monatsübersicht">
-                <Input type="month" value={exportMonth} onChange={(e) => setExportMonth(e.target.value)} className="w-44" />
-              </Field>
-              <Button variant="secondary" onClick={exportCsv} loading={exporting}>
-                <Download className="h-4 w-4" /> CSV
-              </Button>
-            </div>
+          {/* Paginierung */}
+          <div className="mt-4 flex items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={prevPage} disabled={cursorStack.length <= 1 || ordersLoading}>
+              <ChevronLeft className="h-4 w-4" /> Zurück
+            </Button>
+            <span className="text-xs text-ink-muted">Seite {cursorStack.length}</span>
+            <Button size="sm" variant="secondary" onClick={nextPage} disabled={!pageInfo.hasNextPage || ordersLoading}>
+              Weiter <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Umsatzsteuer-Übersicht + CSV-Export je Zeitraum */}
+          <div className="mt-8">
+            <VatSummaryCard invoices={invoices} />
           </div>
         </>
       )}

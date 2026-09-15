@@ -121,20 +121,6 @@ export async function loadInvoices(): Promise<InvoiceRow[]> {
   return (data as InvoiceRow[]) ?? []
 }
 
-export async function loadInvoicesForMonth(year: number, month: number): Promise<InvoiceRow[]> {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const from = `${year}-${pad(month)}-01`
-  const nextMonth = month === 12 ? `${year + 1}-01-01` : `${year}-${pad(month + 1)}-01`
-  const { data, error } = await supabase
-    .from('invoices')
-    .select('*')
-    .gte('issue_date', from)
-    .lt('issue_date', nextMonth)
-    .order('number')
-  if (error) throw new Error(error.message)
-  return (data as InvoiceRow[]) ?? []
-}
-
 /** RPC create_invoice – vergibt die fortlaufende Nummer, schreibt den Snapshot. */
 export async function createInvoiceRow(
   draft: InvoiceDraft,

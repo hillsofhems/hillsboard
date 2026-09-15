@@ -16,8 +16,8 @@ export function recipientLabel(row: InvoiceRow): string {
   return company || name || ''
 }
 
-/** Baut den CSV-Text (ohne BOM) aus den Rechnungen eines Monats. */
-export function buildMonthlyCsv(rows: InvoiceRow[]): string {
+/** Baut den CSV-Text (ohne BOM) aus den Rechnungen eines Zeitraums. */
+export function buildInvoicesCsv(rows: InvoiceRow[]): string {
   // Alle vorkommenden Steuersätze (absteigend), damit die Spalten stabil sind
   const rates = [...new Set(rows.flatMap((r) => r.tax_summary.map((g) => g.rate)))].sort((a, b) => b - a)
   if (rates.length === 0) rates.push(19)

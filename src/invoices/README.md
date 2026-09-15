@@ -160,10 +160,16 @@ Bitte im Shopify-Produkt „Steuern erheben“ prüfen.
 - Storage-Bucket `invoices` (privat): PDFs unter `YYYY/<Nummer>.pdf` (nur anlegen + lesen
   über signierte URLs), Logo unter `assets/` (Admins dürfen ersetzen).
 
-## CSV-Export
+## Umsatzsteuer-Übersicht & CSV-Export
 
-Auf `/rechnungen`: Monat wählen → **CSV**. Eine Zeile pro Rechnung, `;`-getrennt,
-Dezimalkomma, UTF-8 mit BOM. Spalten: Nummer, Datum, Typ, Bestellnummer, Kanal, Empfänger,
+Unten auf `/rechnungen`: Zeitraum wählen (**Monat / Quartal / Jahr**, nach Rechnungsdatum).
+Die Übersicht zeigt je Steuersatz die Anzahl Rechnungen sowie Netto, Umsatzsteuer und Brutto,
+weist innergemeinschaftliche Lieferungen mit Reverse Charge (§ 13b) getrennt aus und
+verrechnet Stornorechnungen (negative Beträge). Logik in [`vat.ts`](vat.ts), Tests in
+`vat.test.ts`.
+
+**CSV** exportiert dieselben Rechnungen: eine Zeile pro Rechnung, `;`-getrennt, Dezimalkomma,
+UTF-8 mit BOM (Excel/Lexware). Spalten: Nummer, Datum, Typ, Bestellnummer, Kanal, Empfänger,
 Land, USt-IdNr., je vorkommendem Steuersatz Netto/USt/Brutto, Gesamtsummen, Reverse Charge,
 Storno-Bezug, Zahlungsart, Lieferdatum.
 
