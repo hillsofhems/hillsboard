@@ -12,6 +12,8 @@ import { TeamPage } from './pages/TeamPage'
 import { CreativeArea } from './pages/CreativeArea'
 import { FilesPage } from './pages/FilesPage'
 import { FinancePage } from './pages/FinancePage'
+import { InvoicesPage } from './pages/InvoicesPage'
+import { InvoiceSettingsPage } from './pages/InvoiceSettingsPage'
 import { InfoPage } from './pages/InfoPage'
 import { NewPageRedirect } from './pages/NewPageRedirect'
 import { AdminPage } from './pages/AdminPage'
@@ -72,6 +74,8 @@ export default function App() {
         <Route path="/team" element={<TeamPage />} />
         <Route path="/files" element={<FilesPage />} />
         <Route path="/finance" element={<FinancePage />} />
+        <Route path="/rechnungen" element={<InvoicesPage />} />
+        <Route path="/rechnungen/einstellungen" element={<InvoiceSettingsPage />} />
         <Route path="/pages/new" element={<NewPageRedirect />} />
         <Route path="/pages/:id" element={<InfoPage />} />
         <Route

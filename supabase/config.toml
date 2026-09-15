@@ -1,0 +1,8 @@
+# Supabase CLI – minimale Konfiguration.
+# Nötig für `supabase functions deploy` (liest verify_jwt je Function).
+# Die Migrationen werden weiterhin wie im README beschrieben eingespielt.
+project_id = "hills-of-hems-hub"
+
+[functions.shopify-orders]
+# Gateway prüft das Supabase-JWT; die Function prüft den User zusätzlich selbst.
+verify_jwt = true

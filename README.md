@@ -12,7 +12,9 @@ farbige Labels) · To-dos (mehrere Personen/Team, projekt- oder „Daily-Busines
 gebunden, eigene To-do-Seite gruppiert nach Board) · Meetings (Agenda vorab +
 Protokoll, Anstehend/Vergangen, **Team-Verfügbarkeit/Kalender**) ·
 **Creative Area** (Brainstorming-Bubbles) ·
-**Finanzen** (GuV + Bilanz pro Jahr) · Info-Seiten (Text + Tabellen) · Datei-Links.
+**Finanzen** (GuV + Bilanz pro Jahr) · **Rechnungen** (PDF-Rechnungen zu bezahlten
+Shopify-Bestellungen für die Buchhaltung, inkl. Storno & CSV-Export) ·
+Info-Seiten (Text + Tabellen) · Datei-Links.
 
 ---
 
@@ -52,8 +54,10 @@ Die SQL-Dateien liegen in [`supabase/migrations`](supabase/migrations) und müss
 | `0010_finance.sql` | Finanzen (`finance_entries`) + 2025-Seed |
 | `0011_team_message.sql` | Nachricht ans Team (`team_messages`) |
 | `0012_availability.sql` | Team-Verfügbarkeit / Meeting-Kalender (`availability`) |
+| `0013`–`0016` | Verfügbarkeits-Fix, To-do-Kommentare, Meeting-Link, Termine + Kalender-Abo |
+| `0017_invoices.sql` | Rechnungsmodul: `invoice_settings`, `invoice_customer_overrides`, `invoices` + RPCs, Storage-Bucket `invoices` |
 
-> Tipp: Alle Dateien einfach **in numerischer Reihenfolge** (0001 → 0012)
+> Tipp: Alle Dateien einfach **in numerischer Reihenfolge** (0001 → 0017)
 > nacheinander im SQL Editor ausführen. Jede ist idempotent bzw. nutzt
 > `if not exists`, ein erneutes Ausführen schadet also nicht.
 
@@ -117,7 +121,9 @@ App läuft auf <http://localhost:5173>.
 
 **Erweiterungen:** `card_todo_assignees` (Mehrfach-Zuweisung) · `ideas` +
 `idea_reactions` (Creative Area) · `finance_entries` (Finanzen) · `team_messages`
-(Team-Nachrichten) · `availability` (Team-Verfügbarkeit / Meeting-Kalender)
+(Team-Nachrichten) · `availability` (Team-Verfügbarkeit / Meeting-Kalender) ·
+`invoice_settings` + `invoice_customer_overrides` + `invoices` (Rechnungen, siehe
+[`src/invoices/README.md`](src/invoices/README.md))
 
 **Wichtige Felder:**
 - `board_columns.board` – `'season'` (Saisonplanung) | `'daily'` (Daily Business)
@@ -149,6 +155,10 @@ an Row Level Security**. Umgesetzte Regeln:
   (`author_id = auth.uid()`); löschen eigene Beiträge oder als Admin.
 - **Finanzen:** lesen + schreiben für eingeloggte Team-Mitglieder (bei Bedarf
   leicht auf Admins einschränkbar).
+- **Rechnungen:** `invoices` nur lesbar; schreiben ausschließlich über die
+  SECURITY-DEFINER-RPC `create_invoice()` (unveränderlich, GoBD). Einstellungen und
+  Kunden-Overrides schreiben nur Admins. Shopify-Zugriff nur über die Edge Function
+  `shopify-orders` (Secrets liegen in Supabase, nie im Frontend).
 - **`service_role`-Key** wird nirgends im Frontend / in der Client-ENV verwendet.
 
 ### RLS testen
@@ -211,12 +221,14 @@ src/
     files/    Datei-Links
     team/     Team- & Rollen-Tabelle
     admin/    Admin: Rollen-CRUD, Rollen-Zuweisung
+  invoices/   Rechnungsmodul (Mapping, PDF-Layout, Tests, README)
   context/    AuthContext (Session, Profil, Rollen)
   hooks/      Daten-Hooks
   lib/        supabase-Client, Typen, Utils
   pages/      Routen-Seiten
 supabase/
   migrations/ SQL (Schema, RLS, Seed)
+  functions/  Edge Function shopify-orders (Shopify Admin API, nur lesend)
 ```
 
 ---
@@ -238,3 +250,4 @@ supabase/
 | `npm run dev` | Dev-Server |
 | `npm run build` | Production-Build (`dist/`) |
 | `npm run preview` | Build lokal testen |
+| `npm test` | Unit-Tests (Vitest): Rechnungs-Mapping + PDF-Rendering |
