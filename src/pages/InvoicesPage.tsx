@@ -375,17 +375,15 @@ export function InvoicesPage() {
             />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-              <table className="w-full min-w-[860px] text-sm">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-line bg-sand-50 text-left text-xs uppercase tracking-wide text-ink-muted">
                     <th className="px-4 py-3 font-semibold">Bestellung</th>
-                    <th className="px-4 py-3 font-semibold">Datum</th>
                     <th className="px-4 py-3 font-semibold">Kunde</th>
                     <th className="px-4 py-3 font-semibold">Kanal</th>
                     <th className="px-4 py-3 text-right font-semibold">Brutto</th>
                     <th className="px-4 py-3 font-semibold">Zahlstatus</th>
                     <th className="px-4 py-3 font-semibold">Rechnung</th>
-                    <th className="px-4 py-3 text-right font-semibold" />
                   </tr>
                 </thead>
                 <tbody>
@@ -398,106 +396,71 @@ export function InvoicesPage() {
                     const inv = entry?.invoice
                     const storno = entry?.cancellation
                     const paid = o.displayFinancialStatus === 'PAID'
-                    const busy = busyRow === inv?.id || busyRow === storno?.id
                     return (
                       <tr key={o.id} className="border-b border-line last:border-0 hover:bg-sand-50/60">
-                        <td className="whitespace-nowrap px-4 py-2 font-medium tabular-nums text-ink">{o.name}</td>
-                        <td className="whitespace-nowrap px-4 py-2 tabular-nums text-ink-muted">{fmtDate(o.createdAt)}</td>
-                        <td className="max-w-[240px] truncate px-4 py-2 text-ink-soft" title={customerLabel(o)}>
+                        <td className="whitespace-nowrap px-4 py-2.5">
+                          <div className="font-medium tabular-nums text-ink">{o.name}</div>
+                          <div className="text-xs tabular-nums text-ink-muted">{fmtDate(o.createdAt)}</div>
+                        </td>
+                        <td className="max-w-[220px] truncate px-4 py-2.5 text-ink-soft" title={customerLabel(o)}>
                           {customerLabel(o)}
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-4 py-2.5">
                           <Badge tone={isOrderchamp(o) ? 'blue' : 'sand'}>
                             {isOrderchamp(o) ? 'Orderchamp' : 'Onlineshop'}
                           </Badge>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums text-ink">
+                        <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-ink">
                           {fmtMoney(Number(o.totalPriceSet.shopMoney.amount), o.totalPriceSet.shopMoney.currencyCode)}
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-4 py-2.5">
                           <Badge tone={status.tone}>{status.label}</Badge>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-2 tabular-nums">
-                          {!inv ? (
-                            <span className="text-ink-faint">keine</span>
-                          ) : storno ? (
-                            <span className="text-ink-soft">
-                              <span className="line-through">{inv.number}</span>{' '}
-                              <Badge tone="terracotta" className="ml-1">
-                                storniert · {storno.number}
-                              </Badge>
-                            </span>
-                          ) : (
-                            <span className={cn('font-medium', inv.pdf_path ? 'text-ink' : 'text-amber-700')}>
-                              {inv.number}
-                              {!inv.pdf_path && <span className="ml-1 text-xs font-normal">(PDF fehlt)</span>}
-                            </span>
+
+                        {/* Rechnung: Status UND Aktion in einer Spalte – der wichtigste Button steht hier,
+                            direkt sichtbar, ohne horizontales Scrollen. */}
+                        <td className="whitespace-nowrap px-4 py-2.5">
+                          {!inv && paid && (
+                            <Button
+                              size="sm"
+                              className="whitespace-nowrap"
+                              onClick={() => setModal({ mode: 'invoice', orderId: o.id, orderName: o.name })}
+                              disabled={settingsIncomplete}
+                              title={settingsIncomplete ? 'Erst Einstellungen ausfüllen' : 'Rechnung erstellen'}
+                            >
+                              <FilePlus2 className="h-3.5 w-3.5" /> Rechnung erstellen
+                            </Button>
                           )}
-                        </td>
-                        <td className="w-0 whitespace-nowrap px-4 py-2">
-                          <div className="flex items-center justify-end gap-1">
-                            {!inv && paid && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="whitespace-nowrap"
-                                onClick={() => setModal({ mode: 'invoice', orderId: o.id, orderName: o.name })}
-                                disabled={settingsIncomplete}
-                                title={settingsIncomplete ? 'Erst Einstellungen ausfüllen' : 'Rechnung erstellen'}
-                              >
-                                <FilePlus2 className="h-3.5 w-3.5 text-sage-600" /> Rechnung erstellen
-                              </Button>
-                            )}
-                            {!inv && !paid && <span className="text-xs text-ink-faint">nicht bezahlt</span>}
-                            {inv && !inv.pdf_path && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="whitespace-nowrap"
-                                loading={busy}
-                                onClick={() => regeneratePdf(inv)}
-                                title="PDF fehlt – aus dem Snapshot neu erzeugen"
-                              >
-                                <RefreshCw className="h-3.5 w-3.5" /> PDF erzeugen
-                              </Button>
-                            )}
-                            {inv && inv.pdf_path && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="whitespace-nowrap"
-                                loading={busyRow === inv.id}
-                                onClick={() => openPdf(inv)}
-                                title={`Rechnung ${inv.number} öffnen`}
-                              >
-                                <ExternalLink className="h-3.5 w-3.5" /> PDF
-                              </Button>
-                            )}
-                            {storno && !storno.pdf_path && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="whitespace-nowrap"
-                                loading={busyRow === storno.id}
-                                onClick={() => regeneratePdf(storno)}
-                                title="Storno-PDF fehlt – neu erzeugen"
-                              >
-                                <RefreshCw className="h-3.5 w-3.5" /> Storno-PDF
-                              </Button>
-                            )}
-                            {storno && storno.pdf_path && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="whitespace-nowrap"
-                                loading={busyRow === storno.id}
-                                onClick={() => openPdf(storno)}
-                                title={`Stornorechnung ${storno.number} öffnen`}
-                              >
-                                <ExternalLink className="h-3.5 w-3.5" /> Storno-PDF
-                              </Button>
-                            )}
-                            {inv && !storno && (
+                          {!inv && !paid && <span className="text-xs text-ink-faint">nicht bezahlt</span>}
+
+                          {inv && !storno && (
+                            <div className="flex items-center gap-1.5">
+                              <span className={cn('font-medium tabular-nums', inv.pdf_path ? 'text-ink' : 'text-amber-700')}>
+                                {inv.number}
+                              </span>
+                              {inv.pdf_path ? (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="whitespace-nowrap"
+                                  loading={busyRow === inv.id}
+                                  onClick={() => openPdf(inv)}
+                                  title={`Rechnung ${inv.number} öffnen`}
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" /> PDF
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="whitespace-nowrap"
+                                  loading={busyRow === inv.id}
+                                  onClick={() => regeneratePdf(inv)}
+                                  title="PDF fehlt – aus dem Snapshot neu erzeugen"
+                                >
+                                  <RefreshCw className="h-3.5 w-3.5" /> PDF erzeugen
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -510,8 +473,31 @@ export function InvoicesPage() {
                               >
                                 <Ban className="h-4 w-4" />
                               </Button>
-                            )}
-                          </div>
+                            </div>
+                          )}
+
+                          {inv && storno && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="tabular-nums text-ink-faint line-through">{inv.number}</span>
+                              <Badge tone="terracotta">Storno</Badge>
+                              <span className="font-medium tabular-nums text-ink">{storno.number}</span>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="whitespace-nowrap"
+                                loading={busyRow === storno.id}
+                                onClick={() => (storno.pdf_path ? openPdf(storno) : regeneratePdf(storno))}
+                                title={storno.pdf_path ? `Stornorechnung ${storno.number} öffnen` : 'Storno-PDF neu erzeugen'}
+                              >
+                                {storno.pdf_path ? (
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                ) : (
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                )}{' '}
+                                PDF
+                              </Button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )
