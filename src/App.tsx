@@ -10,6 +10,7 @@ import { TodosPage } from './pages/TodosPage'
 import { MeetingsPage } from './pages/MeetingsPage'
 import { TeamPage } from './pages/TeamPage'
 import { CreativeArea } from './pages/CreativeArea'
+import { YearIdeasPage } from './pages/YearIdeasPage'
 import { FilesPage } from './pages/FilesPage'
 import { FinancePage } from './pages/FinancePage'
 import { InvoicesPage } from './pages/InvoicesPage'
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="/todos" element={<TodosPage />} />
         <Route path="/meetings" element={<MeetingsPage />} />
         <Route path="/creative" element={<CreativeArea />} />
+        <Route path="/creative/:year" element={<YearIdeasPage />} />
         <Route path="/team" element={<TeamPage />} />
         <Route path="/files" element={<FilesPage />} />
         <Route path="/finance" element={<FinancePage />} />

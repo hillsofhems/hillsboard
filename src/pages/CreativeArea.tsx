@@ -5,6 +5,7 @@ import type { Idea, IdeaReaction } from '@/lib/types'
 import { useAuth } from '@/context/AuthContext'
 import { useProfiles } from '@/hooks/useProfiles'
 import { PageHeader } from '@/components/layout/AppLayout'
+import { CreativeTabs } from '@/components/creative/CreativeTabs'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner, EmptyState, ErrorState } from '@/components/ui/States'
@@ -130,6 +131,7 @@ export function CreativeArea() {
         title="Creative Area"
         description="Wirf Ideen rein – ganz frei. Dein Name wird automatisch klein dazugeschrieben."
       />
+      <CreativeTabs />
 
       {/* Composer: neue Bubble starten */}
       <form

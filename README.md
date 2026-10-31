@@ -11,7 +11,8 @@ Admin-Bereich · **zwei Kanban-Boards** (Saisonplanung & Daily Business, je eige
 farbige Labels) · To-dos (mehrere Personen/Team, projekt- oder „Daily-Business"-
 gebunden, eigene To-do-Seite gruppiert nach Board) · Meetings (Agenda vorab +
 Protokoll, Anstehend/Vergangen, **Team-Verfügbarkeit/Kalender**) ·
-**Creative Area** (Brainstorming-Bubbles) ·
+**Creative Area** (Brainstorming-Bubbles + Reiter **Ideen 2027**: private Ideenliste je
+Person, sortierbar; nur Autor:in und Admins sehen sie) ·
 **Finanzen** (GuV + Bilanz pro Jahr) · **Rechnungen** (PDF-Rechnungen zu bezahlten
 Shopify-Bestellungen für die Buchhaltung, inkl. Storno & CSV-Export) ·
 Info-Seiten (Text + Tabellen) · Datei-Links.
@@ -56,8 +57,9 @@ Die SQL-Dateien liegen in [`supabase/migrations`](supabase/migrations) und müss
 | `0012_availability.sql` | Team-Verfügbarkeit / Meeting-Kalender (`availability`) |
 | `0013`–`0016` | Verfügbarkeits-Fix, To-do-Kommentare, Meeting-Link, Termine + Kalender-Abo |
 | `0017_invoices.sql` | Rechnungsmodul: `invoice_settings`, `invoice_customer_overrides`, `invoices` + RPCs, Storage-Bucket `invoices` |
+| `0018_year_ideas.sql` | Ideen 2027: `year_idea_areas` (Bereiche, Seed) + `year_ideas` (private Ideen je Person, RLS: nur Autor + Admins) |
 
-> Tipp: Alle Dateien einfach **in numerischer Reihenfolge** (0001 → 0017)
+> Tipp: Alle Dateien einfach **in numerischer Reihenfolge** (0001 → 0018)
 > nacheinander im SQL Editor ausführen. Jede ist idempotent bzw. nutzt
 > `if not exists`, ein erneutes Ausführen schadet also nicht.
 
@@ -123,7 +125,8 @@ App läuft auf <http://localhost:5173>.
 `idea_reactions` (Creative Area) · `finance_entries` (Finanzen) · `team_messages`
 (Team-Nachrichten) · `availability` (Team-Verfügbarkeit / Meeting-Kalender) ·
 `invoice_settings` + `invoice_customer_overrides` + `invoices` (Rechnungen, siehe
-[`src/invoices/README.md`](src/invoices/README.md))
+[`src/invoices/README.md`](src/invoices/README.md)) · `year_idea_areas` + `year_ideas`
+(Ideen 2027: Bereiche + private Ideen je Person)
 
 **Wichtige Felder:**
 - `board_columns.board` – `'season'` (Saisonplanung) | `'daily'` (Daily Business)
@@ -131,6 +134,7 @@ App läuft auf <http://localhost:5173>.
 - `card_todos.is_team` – `true` = dem ganzen Team zugewiesen
 - `meetings.agenda` – Tagesordnung vorab; `meetings.notes` – Protokoll
 - `finance_entries.section` – `income | expense` (GuV) bzw. `asset | liability` (Bilanz)
+- `year_ideas.year` – Zieljahr (2027); `year_ideas.position` – eigene Reihenfolge (0 = oben = wichtigste)
 - `file_links.source` – `'manual' | 'gdrive'`: vorbereitet für eine spätere
   **echte Google-Drive-Integration**; aktuell nur manuell (keine Google-OAuth).
 
@@ -155,6 +159,10 @@ an Row Level Security**. Umgesetzte Regeln:
   (`author_id = auth.uid()`); löschen eigene Beiträge oder als Admin.
 - **Finanzen:** lesen + schreiben für eingeloggte Team-Mitglieder (bei Bedarf
   leicht auf Admins einschränkbar).
+- **Ideen 2027:** `year_ideas` liest nur der Autor selbst oder ein Admin
+  (`author_id = auth.uid() or is_admin(auth.uid())`); anlegen/ändern/löschen nur der
+  Autor. Admins sehen alles, verändern aber nichts. Bereiche (`year_idea_areas`)
+  pflegen nur Admins.
 - **Rechnungen:** `invoices` nur lesbar; schreiben ausschließlich über die
   SECURITY-DEFINER-RPC `create_invoice()` (unveränderlich, GoBD). Einstellungen und
   Kunden-Overrides schreiben nur Admins. Shopify-Zugriff nur über die Edge Function
@@ -216,16 +224,15 @@ src/
     ui/       UI-Kit: Button, Input, Modal, Badge, Avatar, …
     board/    Kanban (Spalten, Karten, Detail-Panel)
     todos/    To-do-Listen & -Items
-    meetings/ Meeting-Liste & Editor
-    pages/    Info-Seiten (Text-/Tabellen-Blöcke)
-    files/    Datei-Links
-    team/     Team- & Rollen-Tabelle
-    admin/    Admin: Rollen-CRUD, Rollen-Zuweisung
+    meetings/ Team-Verfügbarkeitskalender
+    pages/    Info-Seiten (Tabellen-Block)
+    creative/ Reiter-Leiste der Creative Area (Brainstorming | Ideen 2027)
   invoices/   Rechnungsmodul (Mapping, PDF-Layout, Tests, README)
   context/    AuthContext (Session, Profil, Rollen)
   hooks/      Daten-Hooks
   lib/        supabase-Client, Typen, Utils
-  pages/      Routen-Seiten
+  pages/      Routen-Seiten (Board, To-dos, Meetings, Team, Finanzen, Rechnungen,
+              Creative Area, Ideen 2027, Info-Seiten, Dateien, Admin)
 supabase/
   migrations/ SQL (Schema, RLS, Seed)
   functions/  Edge Function shopify-orders (Shopify Admin API, nur lesend)

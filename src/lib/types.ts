@@ -139,6 +139,28 @@ export interface IdeaReaction {
   user_id: string
 }
 
+/** Bereich für die Jahres-Ideen (Ideen 2027). Farbe = Schlüssel aus LABEL_COLORS. */
+export interface YearIdeaArea {
+  id: string
+  label: string
+  color: LabelColor
+  position: number
+  created_at: string
+}
+
+/** Private Jahres-Idee: sichtbar nur für author_id und Admins (RLS). position = eigene Reihenfolge. */
+export interface YearIdea {
+  id: string
+  year: number
+  author_id: string
+  area_id: string | null
+  title: string
+  content: string
+  position: number
+  created_at: string
+  updated_at: string
+}
+
 export interface TeamMessage {
   id: string
   content: string
